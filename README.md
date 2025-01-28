@@ -39,7 +39,7 @@ This frontend application is developed as part of our Special Problem for **CMSC
 
 # Contribution Workflow for BANTAY-INIT Project
 
-This document provides a structured workflow for **frontend** and **backend** developers contributing to the project, including steps for design implementation, component development, and backend integration.
+This section provides a structured workflow for **frontend** and **backend** developers contributing to the project, including steps for design implementation, component development, and backend integration.
 
 ---
 
