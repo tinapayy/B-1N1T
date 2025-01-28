@@ -3,24 +3,35 @@ import { db } from "./utils/firebaseConfig";
 import { ref, onValue } from "firebase/database";
 
 const App = () => {
-  const [data, setData] = useState<any>(null);
+  const [temperature, setTemperature] = useState<number | null>(null);
+  const [humidity, setHumidity] = useState<number | null>(null);
 
   useEffect(() => {
-    const dataRef = ref(db);
-    onValue(dataRef, (snapshot) => {
-      setData(snapshot.val());
+    // Reference the temperature and humidity paths in the database
+    const tempRef = ref(db, "temperature");
+    const humRef = ref(db, "humidity");
+
+    // Listen for changes in temperature
+    onValue(tempRef, (snapshot) => {
+      setTemperature(snapshot.val());
+    });
+
+    // Listen for changes in humidity
+    onValue(humRef, (snapshot) => {
+      setHumidity(snapshot.val());
     });
   }, []);
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div>
-        <h1 className="text-4xl font-bold text-blue-600">
-          Firebase Data:
-        </h1>
-        <pre className="mt-4 bg-white p-4 rounded shadow">
-          {JSON.stringify(data, null, 2)}
-        </pre>
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+      <h1 className="text-3xl font-bold mb-4">BANTAY-INIT Dashboard</h1>
+      <div className="bg-white shadow rounded p-6 w-64 text-center">
+        <p className="text-xl font-semibold">Temperature</p>
+        <p className="text-2xl text-blue-600">{temperature ?? "Loading..."}°C</p>
+      </div>
+      <div className="bg-white shadow rounded p-6 w-64 text-center mt-4">
+        <p className="text-xl font-semibold">Humidity</p>
+        <p className="text-2xl text-green-600">{humidity ?? "Loading..."}%</p>
       </div>
     </div>
   );
