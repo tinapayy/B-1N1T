@@ -193,6 +193,8 @@ export const getSensorData = async () => {
 #### Test Changes
 - Use **Postman** or similar tools to test backend functionality.
 
+## To-do: Integrate Arduino/ESP32 readings
+
 ### **3. Push Changes**
 1. Add, commit, and push changes:
    ```bash
