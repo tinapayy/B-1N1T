@@ -1,37 +1,46 @@
 import { useEffect, useState } from "react";
 import { db } from "./utils/firebaseConfig";
 import { ref, onValue } from "firebase/database";
+import Graph from "./components/Graph";
 
 const App = () => {
-  const [temperature, setTemperature] = useState<number | null>(null);
-  const [humidity, setHumidity] = useState<number | null>(null);
+  const [labels, setLabels] = useState<string[]>([]);
+  const [temperatureData, setTemperatureData] = useState<number[]>([]);
+  const [humidityData, setHumidityData] = useState<number[]>([]);
 
   useEffect(() => {
-    // Reference the temperature and humidity paths in the database
-    const tempRef = ref(db, "temperature");
-    const humRef = ref(db, "humidity");
+    const tempRef = ref(db, "sensor/temperature");
+    const humRef = ref(db, "sensor/humidity");
 
-    // Listen for changes in temperature
     onValue(tempRef, (snapshot) => {
-      setTemperature(snapshot.val());
+      const timestamp = new Date().toLocaleTimeString();
+      const temp = snapshot.val();
+      setLabels((prev) => [...prev, timestamp].slice(-10));
+      setTemperatureData((prev) => [...prev, temp].slice(-10));
     });
 
-    // Listen for changes in humidity
     onValue(humRef, (snapshot) => {
-      setHumidity(snapshot.val());
+      const hum = snapshot.val();
+      setHumidityData((prev) => [...prev, hum].slice(-10));
     });
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-      <h1 className="text-3xl font-bold mb-4">BANTAY-INIT Dashboard</h1>
-      <div className="bg-white shadow rounded p-6 w-64 text-center">
-        <p className="text-xl font-semibold">Temperature</p>
-        <p className="text-2xl text-blue-600">{temperature ?? "Loading..."}°C</p>
-      </div>
-      <div className="bg-white shadow rounded p-6 w-64 text-center mt-4">
-        <p className="text-xl font-semibold">Humidity</p>
-        <p className="text-2xl text-green-600">{humidity ?? "Loading..."}%</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center p-6">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">
+        BANTAY-INIT Dashboard
+      </h1>
+      <div className="flex flex-wrap justify-center gap-6 w-full max-w-6xl">
+        <div className="bg-white shadow-lg rounded-lg p-4 w-full md:w-[48%]">
+          <Graph
+            labels={labels}
+            data={temperatureData}
+            title="Temperature (°C)"
+          />
+        </div>
+        <div className="bg-white shadow-lg rounded-lg p-4 w-full md:w-[48%]">
+          <Graph labels={labels} data={humidityData} title="Humidity (%)" />
+        </div>
       </div>
     </div>
   );
