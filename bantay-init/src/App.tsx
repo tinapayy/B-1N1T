@@ -9,8 +9,8 @@ const App = () => {
   const [humidityData, setHumidityData] = useState<number[]>([]);
 
   useEffect(() => {
-    const tempRef = ref(db, "sensor/temperature");
-    const humRef = ref(db, "sensor/humidity");
+    const tempRef = ref(db, "temperature");
+    const humRef = ref(db, "humidity");
 
     onValue(tempRef, (snapshot) => {
       const timestamp = new Date().toLocaleTimeString();
