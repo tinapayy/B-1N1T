@@ -1,49 +1,52 @@
-import { useEffect, useState } from "react";
-import { db } from "./utils/firebaseConfig";
-import { ref, onValue } from "firebase/database";
-import Graph from "./components/Graph";
+import { Bell } from 'lucide-react'
+import { Card } from "./components/ui/card"
 
-const App = () => {
-  const [labels, setLabels] = useState<string[]>([]);
-  const [temperatureData, setTemperatureData] = useState<number[]>([]);
-  const [humidityData, setHumidityData] = useState<number[]>([]);
-
-  useEffect(() => {
-    const tempRef = ref(db, "temperature");
-    const humRef = ref(db, "humidity");
-
-    onValue(tempRef, (snapshot) => {
-      const timestamp = new Date().toLocaleTimeString();
-      const temp = snapshot.val();
-      setLabels((prev) => [...prev, timestamp].slice(-10));
-      setTemperatureData((prev) => [...prev, temp].slice(-10));
-    });
-
-    onValue(humRef, (snapshot) => {
-      const hum = snapshot.val();
-      setHumidityData((prev) => [...prev, hum].slice(-10));
-    });
-  }, []);
-
+export default function App() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center p-6">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        BANTAY-INIT Dashboard
-      </h1>
-      <div className="flex flex-wrap justify-center gap-6 w-full max-w-6xl">
-        <div className="bg-white shadow-lg rounded-lg p-4 w-full md:w-[48%]">
-          <Graph
-            labels={labels}
-            data={temperatureData}
-            title="Temperature (°C)"
-          />
-        </div>
-        <div className="bg-white shadow-lg rounded-lg p-4 w-full md:w-[48%]">
-          <Graph labels={labels} data={humidityData} title="Humidity (%)" />
-        </div>
-      </div>
-    </div>
-  );
-};
+    <div className="flex h-screen bg-gray-100">
+      
+      <main className="flex-1 p-6 overflow-auto">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Miagao, Iloilo</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <input
+                  type="search"
+                  placeholder="Search City"
+                  className="w-[300px] rounded-full px-4 py-2 pl-10 bg-white border"
+                />
+                <span className="absolute left-3 top-2.5 text-muted-foreground">
+                  🔍
+                </span>
+              </div>
+              <button className="p-2 rounded-full bg-white">
+                <Bell className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
 
-export default App;
+          {/* Grid Layout */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            <Card className="p-6">
+            </Card>
+            
+            <Card className="p-6">
+            </Card>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            <Card className="p-6">
+            </Card>
+            
+            <Card className="p-6">
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
