@@ -1,9 +1,11 @@
-import { Bell } from 'lucide-react'
-import { Card } from "./components/ui/card"
+import { Bell } from 'lucide-react';
+import { Card } from "./components/ui/card";
+import Sidebar from "./components/sidebar";
 
 export default function App() {
   return (
     <div className="flex h-screen bg-gray-100">
+      <Sidebar />
       
       <main className="flex-1 p-6 overflow-auto">
         <div className="max-w-6xl mx-auto space-y-6">
@@ -32,21 +34,25 @@ export default function App() {
           {/* Grid Layout */}
           <div className="grid lg:grid-cols-2 gap-6">
             <Card className="p-6">
+
             </Card>
             
             <Card className="p-6">
+              {/* Map Section here */}
             </Card>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
             <Card className="p-6">
+
             </Card>
             
             <Card className="p-6">
+
             </Card>
           </div>
         </div>
       </main>
     </div>
-  )
+  );
 }
