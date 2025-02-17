@@ -1,5 +1,9 @@
 import { Bell } from 'lucide-react';
 import { Card } from "./components/ui/card";
+import WeatherGauge from "./components/weather-gauge";
+import DailyForecast from "./components/daily-forecast";
+import HourlyForecast from "./components/hourly-forecast";
+import MapSection from "./components/map-section";
 import Sidebar from "./components/sidebar";
 
 export default function App() {
@@ -34,7 +38,7 @@ export default function App() {
           {/* Grid Layout */}
           <div className="grid lg:grid-cols-2 gap-6">
             <Card className="p-6">
-
+              <WeatherGauge />
             </Card>
             
             <Card className="p-6">
@@ -44,11 +48,11 @@ export default function App() {
 
           <div className="grid lg:grid-cols-2 gap-6">
             <Card className="p-6">
-
+              <DailyForecast />
             </Card>
             
             <Card className="p-6">
-
+              <HourlyForecast />
             </Card>
           </div>
         </div>
