@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import logoShort from "@/assets/logov2.svg";
 import logoFull from "@/assets/logo.svg";
-import { usePathname } from "next/navigation";
-import { Home, BarChart2, HelpCircle, Settings, Menu, X } from "lucide-react";
+import { Home, BarChart2, HelpCircle, Settings } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
@@ -15,39 +14,33 @@ const navigation = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
-export function Sidebar() {
+// Accept props from Dashboard
+export function Sidebar({
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
+}: {
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
+}) {
   const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        type="button"
-        className="fixed left-4 top-4 z-50 rounded-md p-2 text-white bg-gray-800 md:hidden"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      >
-        {isMobileMenuOpen ? (
-          <X className="h-6 w-6" />
-        ) : (
-          <Menu className="h-6 w-6" />
-        )}
-      </button>
-
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Sidebar Overlay (Closes sidebar when clicked) */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
+          onClick={() => setIsMobileMenuOpen(false)} // Close when tapping outside
         />
       )}
 
-      {/* Mobile Sidebar (Narrower width, more spacing) */}
+      {/* Mobile Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex w-48 flex-col rounded-r-2xl bg-[var(--orange-primary)] shadow-lg transition-transform duration-300 ease-in-out ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         } md:hidden`}
       >
+        {/* Sidebar Logo */}
         <div className="flex h-16 items-center px-8 mt-6 mb-10">
           <Image
             src={logoFull}
@@ -58,6 +51,7 @@ export function Sidebar() {
           />
         </div>
 
+        {/* Navigation Links */}
         <nav className="flex-1 space-y-6 px-8">
           {navigation.map(({ name, href, icon: Icon }) => {
             const isActive = pathname === href;
@@ -68,7 +62,7 @@ export function Sidebar() {
                 className={`flex items-center space-x-4 py-3 text-sm font-medium ${
                   isActive ? "text-white" : "text-white/70 hover:text-white"
                 }`}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={() => setIsMobileMenuOpen(false)} // Close on link click
               >
                 <Icon className="h-6 w-6 flex-shrink-0" />
                 <span>{name}</span>
@@ -78,7 +72,7 @@ export function Sidebar() {
         </nav>
       </aside>
 
-      {/* MD & LG Sidebar (Unchanged, unaffected by mobile menu) */}
+      {/* Desktop Sidebar (Unchanged) */}
       <aside className="fixed inset-y-0 left-0 z-50 hidden md:flex w-20 lg:w-64 flex-col rounded-r-2xl bg-[var(--orange-primary)] shadow-lg">
         <div className="flex h-16 items-center justify-center px-4 mt-12 mb-16">
           <Image
