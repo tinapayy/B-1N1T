@@ -37,7 +37,7 @@ export default function WeatherGauge({
       </div>
 
       {/* Gauge */}
-      <div className="relative w-full h-40 sm:h-48 lg:h-56 mb-6 sm:mb-8">
+      <div className="relative w-full h-40 sm:h-48 lg:h-48 mb-6 sm:mb-8">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie

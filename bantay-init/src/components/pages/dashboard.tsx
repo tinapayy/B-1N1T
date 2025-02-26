@@ -3,6 +3,7 @@
 import { useState } from "react";
 import WeatherGauge from "@/components/sections/weather-gauge";
 import { Sidebar } from "@/components/sections/sidebar";
+import { DailyForecast } from "@/components/sections/daily-forecast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Bell, Menu } from "lucide-react";
@@ -63,11 +64,18 @@ export default function Dashboard() {
 
         {/* Second Row: Daily Forecast (1/3) | Hourly Forecast (2/3) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-          <Card className="col-span-1 flex items-center justify-center h-[200px] text-gray-500">
-            Placeholder for Widget 2 (Daily Forecast)
+          {/* Daily Forecast Section */}
+          <Card className="col-span-1 bg-white rounded-3xl shadow-lg">
+            <CardContent className="p-4">
+              <DailyForecast />
+            </CardContent>
           </Card>
-          <Card className="col-span-1 lg:col-span-2 flex items-center justify-center h-[200px] text-gray-500">
-            Placeholder for Widget 3 (Hourly Forecast)
+
+          {/* Hourly Forecast Section (Placeholder for now) */}
+          <Card className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-lg">
+            <CardContent className="p-4 text-gray-500">
+              Placeholder for Widget 3 (Hourly Forecast)
+            </CardContent>
           </Card>
         </div>
       </div>
