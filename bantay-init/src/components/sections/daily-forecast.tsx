@@ -39,17 +39,13 @@ const getWeatherIcon = (condition: DailyForecastData["condition"]) => {
 
 export function DailyForecast() {
   return (
-    <div className="overflow-hidden">
-      <CardHeader className="pb-0">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">
-            Daily Forecast
-          </h2>
-          <p className="text-sm text-muted-foreground">by AccuWeather</p>
-        </div>
+    <div className="h-[320px] overflow-hidden">
+      <CardHeader className="pb-2">
+        <h2 className="text-xl font-semibold">Daily Forecast</h2>
+        <p className="text-xs text-gray-500">by AccuWeather</p>
       </CardHeader>
-      <CardContent className="pt-6">
-        <div className="space-y-6">
+      <CardContent className="pt-4 h-full overflow-y-auto">
+        <div className="space-y-4">
           {mockForecasts.map((forecast) => {
             const Icon = getWeatherIcon(forecast.condition);
             return (
@@ -57,17 +53,13 @@ export function DailyForecast() {
                 key={forecast.day}
                 className="flex items-center justify-between"
               >
-                <div className="w-[100px] text-lg font-medium">
+                <div className="w-[80px] text-base font-medium">
                   {forecast.day}
                 </div>
-                <div className="flex items-center justify-center w-[100px]">
-                  <Icon className="h-8 w-8 text-gray-600" strokeWidth={1.5} />
-                </div>
-                <div className="flex items-center gap-2 w-[100px] justify-end text-lg">
+                <Icon className="h-6 w-6 text-gray-600" strokeWidth={1.5} />
+                <div className="flex items-center gap-3 w-[80px] justify-end text-base">
                   <span className="font-semibold">{forecast.highTemp}°</span>
-                  <span className="text-muted-foreground">
-                    {forecast.lowTemp}°
-                  </span>
+                  <span className="text-gray-500">{forecast.lowTemp}°</span>
                 </div>
               </div>
             );
