@@ -1,52 +1,70 @@
 "use client";
 
-// Import necessary libraries and components
-import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"; // For rendering the pie chart
-import { MapPin, Thermometer, Droplets } from "lucide-react"; // Icons for location, temperature, and humidity
-import useFirebaseData from "../lib/useFirebaseData"; // Custom hook to fetch data from Firebase
-import { format } from "date-fns"; // For formatting dates and times
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { MapPin, Thermometer, Droplets } from "lucide-react";
+import useFirebaseData from "../lib/useFirebaseData";
+import { format } from "date-fns";
+import { useEffect, useState } from "react";
 
-// Define the props interface for the WeatherGauge component
 interface WeatherGaugeProps {
-  location: string; // Dynamic: Location name passed as a prop
+  location: string;
 }
 
-// Main WeatherGauge component
-export default function WeatherGauge({ location }: WeatherGaugeProps) {
-  // Fetch data from Firebase using the custom hook
-  const { data, loading, error } = useFirebaseData("/readings");
+interface Reading {
+  id: string; // Firebase auto-generated key
+  heatIndex: number;
+  temperature: number;
+  humidity: number;
+  timestamp: number | { ".sv": string }; // Handle server timestamp placeholder
+}
 
-  // Display a loading message while data is being fetched
+export default function WeatherGauge({ location }: WeatherGaugeProps) {
+  const { data, loading, error } = useFirebaseData("/readings");
+  const [latestReading, setLatestReading] = useState<Reading | null>(null);
+
+  useEffect(() => {
+    if (data) {
+      let latestReading: Reading | null = null;
+  
+      // Iterate through the Firebase data object
+      for (const key in data) {
+        const reading = data[key] as Reading;
+        if (!latestReading || reading.timestamp > latestReading.timestamp) {
+          latestReading = reading;
+        }
+      }
+  
+      setLatestReading(latestReading);
+    }
+  }, [data]);
+
   if (loading) {
     return <div className="p-4 text-center">Loading...</div>;
   }
 
-  // Display an error message if there's an issue fetching data
   if (error) {
     return <div className="p-4 text-center text-red-500">Error: {error.message}</div>;
   }
 
-  // Display a message if no data is available
-  if (!data) {
+  if (!data || Object.keys(data).length === 0) {
     return <div className="p-4 text-center">No data available</div>;
   }
 
-  // Get the latest reading from the fetched data
-  const latestReadingKey = Object.keys(data).pop(); // Get the key of the latest reading
-  const latestReading = latestReadingKey ? data[latestReadingKey] : null; // Get the latest reading object
-
-  // Display a message if no latest reading is available
   if (!latestReading) {
     return <div className="p-4 text-center">No latest reading available</div>;
   }
 
-  // Destructure the latest reading to get temperature, humidity, heatIndex, and timestamp
   const { temperature, humidity, heatIndex, timestamp } = latestReading;
+  const heatIndexNumber = heatIndex ? parseFloat(heatIndex.toFixed(4)) : 0;
 
-  // Ensure heatIndex is a number (fallback to 0 if undefined or invalid)
-  const heatIndexNumber = heatIndex ? parseFloat(heatIndex) : 0;
+  // Handle server timestamp placeholder
+  const isServerTimestamp = typeof timestamp === "object" && ".sv" in timestamp;
+  const actualTimestamp = isServerTimestamp ? Date.now() : timestamp;
 
-  // Function to determine the heat index status (e.g., "Caution", "Danger")
+  // Format the date and time
+  const formattedDate = format(new Date(actualTimestamp), "MMM. d, yyyy, EEEE");
+  const formattedTime = format(new Date(actualTimestamp), "h:mm:ss a");
+
   const getHeatIndexStatus = (value: number) => {
     if (value < 27)
       return { level: "Not Hazardous", color: "#90EE90", message: "Conditions are safe for outdoor activities." };
@@ -62,18 +80,11 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
     return { level: "Extreme Danger", color: "#8B0000", message: "Heat stroke is highly likely." };
   };
 
-  // Get the current heat index status based on the heatIndex value
   const status = getHeatIndexStatus(heatIndexNumber);
-
-  // Data for the pie chart (heat index vs remaining value)
   const gaugeData = [
-    { name: "value", value: heatIndexNumber }, // Heat index value
-    { name: "remainder", value: 60 - heatIndexNumber }, // Remaining value to complete the gauge
+    { name: "value", value: heatIndexNumber },
+    { name: "remainder", value: 60 - heatIndexNumber },
   ];
-
-  // Format the date and time for display
-  const formattedDate = format(new Date(Number.parseInt(timestamp)), "MMM. d, yyyy, EEEE"); // e.g., "Oct. 10, 2023, Tuesday"
-  const formattedTime = format(new Date(Number.parseInt(timestamp)), "h:mm:ss a"); // e.g., "10:30:45 AM"
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg">
@@ -81,11 +92,11 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
       <div className="flex flex-col sm:flex-row justify-between mb-6 gap-4">
         <div className="flex items-center gap-2 bg-[#2f2f2f] text-white px-4 py-2 rounded-full">
           <MapPin className="w-4 h-4" />
-          <span className="text-sm sm:text-base">{location}</span> {/* Display the location name */}
+          <span className="text-sm sm:text-base">{location}</span>
         </div>
         <div className="text-gray-500 text-xs sm:text-sm text-center sm:text-right">
-          <div>{formattedDate}</div> {/* Display the formatted date */}
-          <div>Last Updated: {formattedTime}</div> {/* Display the formatted time */}
+          <div>{formattedDate}</div>
+          <div>Last Updated: {formattedTime}</div>
         </div>
       </div>
 
@@ -94,44 +105,44 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={gaugeData} // Data for the pie chart
-              cx="50%" // Center X position
-              cy="100%" // Center Y position
-              startAngle={180} // Start angle for the semi-circle
-              endAngle={0} // End angle for the semi-circle
-              innerRadius="60%" // Inner radius of the pie chart
-              outerRadius="80%" // Outer radius of the pie chart
-              paddingAngle={0} // Space between segments
-              dataKey="value" // Key to access the value in the data
+              data={gaugeData}
+              cx="50%"
+              cy="100%"
+              startAngle={180}
+              endAngle={0}
+              innerRadius="60%"
+              outerRadius="80%"
+              paddingAngle={0}
+              dataKey="value"
             >
-              <Cell fill={status.color} /> {/* Color for the heat index segment */}
-              <Cell fill="#D1D5DB" /> {/* Color for the remaining segment */}
+              <Cell fill={status.color} />
+              <Cell fill="#D1D5DB" />
             </Pie>
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
           <div className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-1">
-            {heatIndexNumber.toFixed(1)}°C {/* Display the heat index value */}
+            {heatIndexNumber.toFixed(2)}°C
           </div>
-          <div className="text-lg sm:text-xl lg:text-2xl text-gray-600">Heat Index</div> {/* Label for heat index */}
+          <div className="text-lg sm:text-xl lg:text-2xl text-gray-600">Heat Index</div>
         </div>
       </div>
 
       {/* Readings (Temperature, Status, Humidity) */}
       <div className="flex justify-between items-center mb-6 sm:mb-8">
         <div className="flex items-center gap-2">
-          <Thermometer className="w-4 h-4 sm:w-5 sm:h-5" /> {/* Temperature icon */}
-          <span className="text-base sm:text-lg lg:text-xl">{parseFloat(temperature).toFixed(1)}°C</span> {/* Display temperature */}
+          <Thermometer className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="text-base sm:text-lg lg:text-xl">{temperature.toFixed(1)}°C</span>
         </div>
         <div className="flex flex-col items-center">
           <div className="text-lg sm:text-xl lg:text-2xl font-medium" style={{ color: status.color }}>
-            {status.level} {/* Display the heat index status (e.g., "Caution") */}
+            {status.level}
           </div>
-          <div className="text-gray-500 text-xs sm:text-sm">Classification</div> {/* Label for classification */}
+          <div className="text-gray-500 text-xs sm:text-sm">Classification</div>
         </div>
         <div className="flex items-center gap-2">
-          <Droplets className="w-4 h-4 sm:w-5 sm:h-5" /> {/* Humidity icon */}
-          <span className="text-base sm:text-lg lg:text-xl">{parseFloat(humidity).toFixed(1)}%</span> {/* Display humidity */}
+          <Droplets className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="text-base sm:text-lg lg:text-xl">{humidity.toFixed(1)}%</span>
         </div>
       </div>
 
@@ -140,19 +151,18 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
         <div
           className="h-2 sm:h-3 w-full rounded-full mb-2 relative"
           style={{
-            background: "linear-gradient(to right, #90EE90, #FFD700, #FFA500, #FF4500, #8B0000)", // Gradient for heat index levels
+            background: "linear-gradient(to right, #90EE90, #FFD700, #FFA500, #FF4500, #8B0000)",
           }}
         >
           <div
             className="absolute w-1 h-3 sm:h-4 bg-black top-1/2 transform -translate-y-1/2"
             style={{
-              left: `${(heatIndexNumber / 60) * 100}%`, // Position the indicator based on heat index
-              transition: "left 0.3s ease-in-out", // Smooth transition for the indicator
+              left: `${(heatIndexNumber / 60) * 100}%`,
+              transition: "left 0.3s ease-in-out",
             }}
           />
         </div>
         <div className="flex justify-between text-[10px] sm:text-xs">
-          {/* Labels for heat index levels */}
           <div className="text-center">
             <div className="text-gray-600">{"< 27°C"}</div>
             <div className="text-gray-400 whitespace-pre-line">Not{"\n"}Hazardous</div>
@@ -178,7 +188,7 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
 
       {/* Warning Message (Based on Heat Index Status) */}
       <div className="bg-[#2f2f2f] text-white rounded-lg p-3 sm:p-4 text-center text-xs sm:text-sm">
-        {status.message} {/* Display the warning message based on heat index status */}
+        {status.message}
       </div>
     </div>
   );
