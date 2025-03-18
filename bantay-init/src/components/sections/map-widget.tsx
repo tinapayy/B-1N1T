@@ -70,6 +70,7 @@ const MapWidget = () => {
       zoom={zoom}
       className="h-full w-full rounded-xl"
       scrollWheelZoom={true}
+      style={{ zIndex: 1 }} // Lower z-index
     >
       <ZoomHandler setZoom={setZoom} /> {/* Handle zoom events */}
       {/* 🗺 Beige/Brown Themed Map */}

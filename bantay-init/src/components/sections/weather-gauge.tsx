@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { MapPin, Thermometer, Droplets, Info } from "lucide-react";
+import { MapPin, Thermometer, Droplets } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -25,6 +26,26 @@ export default function WeatherGauge({
   lastUpdated,
 }: WeatherGaugeProps) {
   const data = [{ value: 50 }, { value: 50 }];
+
+  // State to track tooltip position
+  const [tooltipSide, setTooltipSide] = useState<"top" | "right" | "bottom">(
+    "right"
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setTooltipSide("top"); // Change to "bottom" if preferred
+      } else {
+        setTooltipSide("right");
+      }
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
     <TooltipProvider>
@@ -52,7 +73,7 @@ export default function WeatherGauge({
                 startAngle={180}
                 endAngle={0}
                 innerRadius="130%"
-                outerRadius="180%" // Increase outer radius for a larger gauge
+                outerRadius="180%"
                 paddingAngle={0}
                 dataKey="value"
               >
@@ -145,16 +166,16 @@ export default function WeatherGauge({
         <div className="bg-[#2f2f2f] text-white rounded-lg p-2 md:p-4 sm:p-2 text-justify text-xs sm:text-xs relative flex items-center justify-center">
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="line-clamp-2 max-h-[3rem] overflow-hidden text-ellipsis sm:text-xs md:text-xs lg:text-[10px] xl:text-[12px]">
+              <span className="cursor-pointer line-clamp-2 max-h-[3rem] overflow-hidden text-ellipsis sm:text-xs md:text-xs lg:text-[10px] xl:text-[12px]">
                 Fatigue is possible with prolonged exposure and activity.
                 Continuing activity could lead to heat cramps. Lorem ipsum dolor
                 sit amet, consectetur adipiscing elit, sed do eiusmod tempor
                 incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-                veniam
               </span>
             </TooltipTrigger>
+
             <TooltipContent
-              side="right"
+              side={tooltipSide}
               align="center"
               className="max-w-[300px] sm:max-w-[350px]"
             >
