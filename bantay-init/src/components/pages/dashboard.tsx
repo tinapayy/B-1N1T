@@ -60,7 +60,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Right Column: Map */}
-          <Card className="col-span-1 min-h-[400px] flex items-center justify-center text-gray-500">
+          <Card className="col-span-1 min-h-[400px] flex items-center justify-center text-gray-500 rounded-3xl shadow-lg">
             <MapWidget />
           </Card>
         </div>
