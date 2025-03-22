@@ -49,13 +49,8 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <WeatherGauge
-                temperature={28}
-                humidity={77.2}
-                heatIndex={31}
-                location="Miagao, Iloilo"
-                lastUpdated="12:08 AM"
-              />
+              {/* WeatherGauge now handles dynamic Firebase data internally */}
+              <WeatherGauge location="Miagao, Iloilo" />
             </CardContent>
           </Card>
 
