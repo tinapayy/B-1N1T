@@ -1,7 +1,16 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { CardHeader, CardContent } from "@/components/ui/card";
-import { Cloud, CloudRain, CloudLightning, Sun, CloudSun } from "lucide-react";
+import {
+  Cloud,
+  CloudRain,
+  CloudLightning,
+  Sun,
+  CloudSun,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react";
 
 interface HourlyForecastData {
   time: string;
@@ -17,7 +26,6 @@ const mockHourlyForecasts: HourlyForecastData[] = [
   { time: "3 PM", condition: "partly-cloudy", temperature: 32 },
   { time: "4 PM", condition: "sunny", temperature: 30 },
   { time: "5 PM", condition: "cloudy", temperature: 28 },
-  { time: "6 PM", condition: "rain", temperature: 26 },
 ];
 
 const getWeatherIcon = (condition: HourlyForecastData["condition"]) => {
@@ -38,8 +46,74 @@ const getWeatherIcon = (condition: HourlyForecastData["condition"]) => {
 };
 
 export function HourlyForecast() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showLeftIndicator, setShowLeftIndicator] = useState(false);
+  const [showRightIndicator, setShowRightIndicator] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setShowLeftIndicator(scrollLeft > 0);
+      setShowRightIndicator(scrollLeft + clientWidth < scrollWidth);
+    }
+  };
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const scrollAmount = 150; // Adjust scroll step
+      scrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  // Mouse Drag Scroll
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollLeft(scrollRef.current.scrollLeft);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return;
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // Adjust sensitivity
+    scrollRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (scrollRef.current) {
+        const { scrollWidth, clientWidth } = scrollRef.current;
+        setShowRightIndicator(scrollWidth > clientWidth);
+      }
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener("resize", handleResize);
+    if (scrollRef.current) {
+      scrollRef.current.addEventListener("scroll", checkScroll);
+    }
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (scrollRef.current) {
+        scrollRef.current.removeEventListener("scroll", checkScroll);
+      }
+    };
+  }, []);
+
   return (
-    <div className="overflow-hidden">
+    <div className="overflow-hidden relative">
       <CardHeader className="pb-0">
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold">Hourly Forecast</h2>
@@ -48,7 +122,15 @@ export function HourlyForecast() {
       </CardHeader>
       <CardContent className="pt-6">
         <div className="relative">
-          <div className="flex overflow-x-auto pb-4 gap-4 scrollbar-hide">
+          {/* Scrollable container */}
+          <div
+            ref={scrollRef}
+            className="flex overflow-x-auto pb-4 gap-4 scrollbar-hide scroll-smooth cursor-grab active:cursor-grabbing"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
             {mockHourlyForecasts.map((forecast) => {
               const Icon = getWeatherIcon(forecast.condition);
               return (
@@ -73,8 +155,25 @@ export function HourlyForecast() {
             })}
           </div>
 
-          {/* Fade effect for scroll indication */}
-          <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none" />
+          {/* Left Scroll Button */}
+          {showLeftIndicator && (
+            <button
+              onClick={() => scroll("left")}
+              className="absolute left-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer"
+            >
+              <ChevronLeft className="w-6 h-6 text-white" />
+            </button>
+          )}
+
+          {/* Right Scroll Button */}
+          {showRightIndicator && (
+            <button
+              onClick={() => scroll("right")}
+              className="absolute right-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer"
+            >
+              <ChevronRight className="w-6 h-6 text-white" />
+            </button>
+          )}
         </div>
       </CardContent>
     </div>

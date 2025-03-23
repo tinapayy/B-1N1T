@@ -1,30 +1,112 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { MapPin, Thermometer, Droplets, Info } from "lucide-react";
+import { MapPin, Thermometer, Droplets } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import useFirebaseData from "../../lib/useFirebaseData";
+import { format } from "date-fns";
 
 interface WeatherGaugeProps {
-  temperature: number;
-  humidity: number;
-  heatIndex: number;
   location: string;
-  lastUpdated: string;
 }
 
-export default function WeatherGauge({
-  temperature,
-  humidity,
-  heatIndex,
-  location,
-  lastUpdated,
-}: WeatherGaugeProps) {
-  const data = [{ value: 50 }, { value: 50 }];
+interface Reading {
+  id: string;
+  heatIndex: number;
+  temperature: number;
+  humidity: number;
+  timestamp: number | { ".sv": string };
+}
+
+export default function WeatherGauge({ location }: WeatherGaugeProps) {
+  const { data, loading, error } = useFirebaseData("/readings");
+  const [latestReading, setLatestReading] = useState<Reading | null>(null);
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
+
+  useEffect(() => {
+    if (data) {
+      let latest: Reading | null = null;
+
+      for (const key in data) {
+        const reading = data[key] as Reading;
+        if (!latest || reading.timestamp > latest.timestamp) {
+          latest = reading;
+        }
+      }
+
+      setLatestReading(latest);
+    }
+  }, [data]);
+
+  if (loading || !latestReading) {
+    return <div className="p-4 text-center">Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center text-red-500">
+        Error: {error.message}
+      </div>
+    );
+  }
+
+  const { temperature, humidity, heatIndex, timestamp } = latestReading;
+  const heatIndexNumber = heatIndex ? parseFloat(heatIndex.toFixed(4)) : 0;
+
+  const isServerTimestamp =
+    typeof timestamp === "object" && ".sv" in timestamp;
+  const actualTimestamp = isServerTimestamp ? Date.now() : timestamp;
+
+  const formattedDate = format(
+    new Date(actualTimestamp),
+    "MMM. d, yyyy, EEEE"
+  );
+  const formattedTime = format(new Date(actualTimestamp), "h:mm:ss a");
+
+  const getHeatIndexStatus = (value: number) => {
+    if (value < 27)
+      return {
+        level: "Not Hazardous",
+        color: "#90EE90",
+        message: "Conditions are safe for outdoor activities.",
+      };
+    if (value < 32)
+      return {
+        level: "Caution",
+        color: "#FFD700",
+        message:
+          "Fatigue is possible with prolonged exposure and activity. Continuing activity could lead to heat cramps.",
+      };
+    if (value < 41)
+      return {
+        level: "Extreme Caution",
+        color: "#FFA500",
+        message: "Heat cramps and heat exhaustion are possible.",
+      };
+    if (value < 51)
+      return {
+        level: "Danger",
+        color: "#FF4500",
+        message: "Heat cramps and heat exhaustion are likely.",
+      };
+    return {
+      level: "Extreme Danger",
+      color: "#8B0000",
+      message: "Heat stroke is highly likely.",
+    };
+  };
+
+  const status = getHeatIndexStatus(heatIndexNumber);
+  const dataPie = [
+    { value: heatIndexNumber },
+    { value: 60 - heatIndexNumber },
+  ];
 
   return (
     <TooltipProvider>
@@ -36,8 +118,8 @@ export default function WeatherGauge({
             <span className="truncate">{location}</span>
           </div>
           <div className="text-gray-500 text-[10px] sm:text-xs text-center sm:text-right leading-tight whitespace-nowrap">
-            <div>Feb. 5, 2025, Tuesday</div>
-            <div>Last Updated: {lastUpdated}</div>
+            <div>{formattedDate}</div>
+            <div>Last Updated: {formattedTime}</div>
           </div>
         </div>
 
@@ -46,24 +128,24 @@ export default function WeatherGauge({
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={data}
+                data={dataPie}
                 cx="50%"
                 cy="90%"
                 startAngle={180}
                 endAngle={0}
                 innerRadius="130%"
-                outerRadius="180%" // Increase outer radius for a larger gauge
+                outerRadius="180%"
                 paddingAngle={0}
                 dataKey="value"
               >
-                <Cell fill="#FFD700" />
+                <Cell fill={status.color} />
                 <Cell fill="#D1D5DB" />
               </Pie>
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-2 text-center">
             <div className="text-2xl sm:text-3xl lg:text-3xl font-bold">
-              {heatIndex}°C
+              {heatIndexNumber.toFixed(2)}°C
             </div>
             <div className="text-xs sm:text-sm text-gray-600">Heat Index</div>
           </div>
@@ -73,11 +155,14 @@ export default function WeatherGauge({
         <div className="flex justify-between items-center mb-3 sm:mb-4">
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <Thermometer className="w-4 h-4" />
-            <span>{temperature}°C</span>
+            <span>{temperature.toFixed(1)}°C</span>
           </div>
           <div className="flex flex-col items-center">
-            <div className="text-[#FFD700] text-xs sm:text-sm font-medium">
-              Caution
+            <div
+              className="text-xs sm:text-sm font-medium"
+              style={{ color: status.color }}
+            >
+              {status.level}
             </div>
             <div className="text-gray-500 text-[10px] sm:text-xs">
               Classification
@@ -85,7 +170,7 @@ export default function WeatherGauge({
           </div>
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <Droplets className="w-4 h-4" />
-            <span>{humidity}%</span>
+            <span>{humidity.toFixed(1)}%</span>
           </div>
         </div>
 
@@ -101,7 +186,7 @@ export default function WeatherGauge({
             <div
               className="absolute w-1 h-3 sm:h-3.5 bg-black top-1/2 transform -translate-y-1/2"
               style={{
-                left: `${(heatIndex / 60) * 100}%`,
+                left: `${(heatIndexNumber / 60) * 100}%`,
                 transition: "left 0.3s ease-in-out",
               }}
             />
@@ -143,33 +228,34 @@ export default function WeatherGauge({
 
         {/* Warning Message with Tooltip */}
         <div className="bg-[#2f2f2f] text-white rounded-lg p-2 md:p-4 sm:p-2 text-justify text-xs sm:text-xs relative flex items-center justify-center">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="line-clamp-2 max-h-[3rem] overflow-hidden text-ellipsis sm:text-xs md:text-xs lg:text-[10px] xl:text-[12px]">
-                Fatigue is possible with prolonged exposure and activity.
-                Continuing activity could lead to heat cramps. Lorem ipsum dolor
-                sit amet, consectetur adipiscing elit, sed do eiusmod tempor
-                incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-                veniam
+          <Tooltip open={isTooltipOpen} onOpenChange={setIsTooltipOpen}>
+            <TooltipTrigger
+              asChild
+              onClick={() => setIsTooltipOpen(!isTooltipOpen)}
+            >
+              <span className="cursor-pointer line-clamp-2 max-h-[3rem] overflow-hidden text-ellipsis sm:text-xs md:text-xs lg:text-[10px] xl:text-[12px]">
+                {status.message}
               </span>
             </TooltipTrigger>
+
             <TooltipContent
-              side="right"
+              side="top"
               align="center"
               className="max-w-[300px] sm:max-w-[350px]"
             >
-              <p>
-                Fatigue is possible with prolonged exposure and activity.
-                Continuing activity could lead to heat cramps.
-              </p>
-              <p className="mt-1 text-[var(--orange-primary)] font-medium">
-                First Aid Tips:
-              </p>
-              <ul className="list-disc list-inside text-xs">
-                <li>Stay hydrated</li>
-                <li>Rest in a cool place</li>
-                <li>Apply cold compress</li>
-              </ul>
+              <p>{status.message}</p>
+              {status.level === "Caution" && (
+                <>
+                  <p className="mt-1 text-[var(--orange-primary)] font-medium">
+                    First Aid Tips:
+                  </p>
+                  <ul className="list-disc list-inside text-xs">
+                    <li>Stay hydrated</li>
+                    <li>Rest in a cool place</li>
+                    <li>Apply cold compress</li>
+                  </ul>
+                </>
+              )}
             </TooltipContent>
           </Tooltip>
         </div>

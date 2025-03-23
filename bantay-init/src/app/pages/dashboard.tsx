@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/sections/sidebar";
 import WeatherGauge from "@/components/sections/weather-gauge";
+import MapWidget from "@/components/sections/map-widget";
+
 import { DailyForecast } from "@/components/sections/daily-forecast";
 import { HourlyForecast } from "@/components/sections/hourly-forecast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,19 +49,14 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              <WeatherGauge
-                temperature={28}
-                humidity={77.2}
-                heatIndex={31}
-                location="Miagao, Iloilo"
-                lastUpdated="12:08 AM"
-              />
+              {/* WeatherGauge now handles dynamic Firebase data internally */}
+              <WeatherGauge location="Miagao, Iloilo" />
             </CardContent>
           </Card>
 
           {/* Right Column: Map */}
-          <Card className="col-span-1 min-h-[400px] flex items-center justify-center text-gray-500">
-            Placeholder for Widget 1 (Map)
+          <Card className="col-span-1 min-h-[400px] flex items-center justify-center text-gray-500 rounded-3xl shadow-lg">
+            <MapWidget />
           </Card>
         </div>
 
