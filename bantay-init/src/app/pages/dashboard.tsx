@@ -15,7 +15,7 @@ export default function Dashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
+    <div className="flex flex-col min-h-screen bg-white">
       {/* Sidebar */}
       <Sidebar
         isMobileMenuOpen={isMobileMenuOpen}

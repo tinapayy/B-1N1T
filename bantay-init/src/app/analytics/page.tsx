@@ -9,12 +9,21 @@ import WeeklyBarChart from "@/app/analytics/WeeklyBarChart";
 import { Card } from "@/components/ui/card";
 
 const timeOptions = ["Daily", "Weekly", "Monthly", "Yearly"];
-const alertTypeOptions = ["All Types", "Danger", "Extreme Caution", "Extreme Danger"];
+const alertTypeOptions = [
+  "All Types",
+  "Danger",
+  "Extreme Caution",
+  "Extreme Danger",
+];
 const heatIndexOptions = ["All Values", "30°C+", "40°C+", "50°C+"];
 const dateOptions = ["Today", "This Week", "This Month", "Custom Range"];
 
 export default function Analytics() {
-  const { data: firebaseReadings, loading, error } = useFirebaseData("/readings");
+  const {
+    data: firebaseReadings,
+    loading,
+    error,
+  } = useFirebaseData("/readings");
   const [latestReading, setLatestReading] = useState(null);
   const [filteredAlerts, setFilteredAlerts] = useState([]);
 
@@ -37,7 +46,9 @@ export default function Analytics() {
 
   useEffect(() => {
     if (firebaseReadings.length > 0) {
-      const latest = firebaseReadings.reduce((a, b) => (a.timestamp > b.timestamp ? a : b));
+      const latest = firebaseReadings.reduce((a, b) =>
+        a.timestamp > b.timestamp ? a : b
+      );
       setLatestReading(latest);
     }
   }, [firebaseReadings]);
@@ -72,32 +83,51 @@ export default function Analytics() {
     if (selectedAlertType !== "All Types") {
       alerts = alerts.filter((a) => a.type === selectedAlertType);
     }
-    if (selectedHeatIndex === "30°C+") alerts = alerts.filter((a) => a.rawHeatIndex >= 30);
-    if (selectedHeatIndex === "40°C+") alerts = alerts.filter((a) => a.rawHeatIndex >= 40);
-    if (selectedHeatIndex === "50°C+") alerts = alerts.filter((a) => a.rawHeatIndex >= 50);
+    if (selectedHeatIndex === "30°C+")
+      alerts = alerts.filter((a) => a.rawHeatIndex >= 30);
+    if (selectedHeatIndex === "40°C+")
+      alerts = alerts.filter((a) => a.rawHeatIndex >= 40);
+    if (selectedHeatIndex === "50°C+")
+      alerts = alerts.filter((a) => a.rawHeatIndex >= 50);
     setFilteredAlerts(alerts as any);
   }, [parsedAlerts, selectedAlertType, selectedHeatIndex]);
 
-  const chartData = useMemo(() => firebaseReadings.slice(-8).map((r, i) => ({
-    month: `T${i + 1}`,
-    heatIndex: r.heatIndex,
-    temperature: r.temperature,
-  })), [firebaseReadings]);
+  const chartData = useMemo(
+    () =>
+      firebaseReadings.slice(-8).map((r, i) => ({
+        month: `T${i + 1}`,
+        heatIndex: r.heatIndex,
+        temperature: r.temperature,
+      })),
+    [firebaseReadings]
+  );
 
-  const weeklyChartData = useMemo(() => firebaseReadings.slice(-7).map((r, i) => ({
-    day: `D${i + 1}`,
-    minTemp: r.heatIndex - 3,
-    maxTemp: r.heatIndex,
-  })), [firebaseReadings]);
+  const weeklyChartData = useMemo(
+    () =>
+      firebaseReadings.slice(-7).map((r, i) => ({
+        day: `D${i + 1}`,
+        minTemp: r.heatIndex - 3,
+        maxTemp: r.heatIndex,
+      })),
+    [firebaseReadings]
+  );
 
   if (loading || !latestReading)
-    return <div className="p-6 text-center text-gray-500">Loading real-time analytics...</div>;
+    return (
+      <div className="p-6 text-center text-gray-500">
+        Loading real-time analytics...
+      </div>
+    );
 
   if (error)
-    return <div className="p-6 text-center text-red-500">Error loading data: {error.message}</div>;
+    return (
+      <div className="p-6 text-center text-red-500">
+        Error loading data: {error.message}
+      </div>
+    );
 
   return (
-    <div className="flex min-h-screen bg-[#f2f3f5]">
+    <div className="flex min-h-screen bg-white">
       <div className="flex-1 p-4 flex flex-col gap-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="col-span-1 lg:col-span-2">
