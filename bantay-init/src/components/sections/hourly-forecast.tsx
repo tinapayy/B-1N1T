@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useState, useRef, useEffect } from "react";
 import { CardHeader, CardContent } from "@/components/ui/card";
 import {
@@ -122,10 +124,38 @@ export function HourlyForecast() {
       </CardHeader>
       <CardContent className="pt-6">
         <div className="relative">
-          {/* Scrollable container */}
+          {/* Mobile View (Column Layout) */}
+          <div className="sm:hidden grid grid-cols-1 gap-3">
+            {mockHourlyForecasts.map((forecast) => {
+              const Icon = getWeatherIcon(forecast.condition);
+              return (
+                <div
+                  key={forecast.time}
+                  className="bg-[#2f2f2f] rounded-[16px] flex items-center p-3 text-white"
+                  style={{
+                    boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.1)",
+                    background:
+                      "linear-gradient(180deg, #2f2f2f 0%, #262626 100%)",
+                  }}
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-medium">{forecast.time}</span>
+                    <span className="text-lg font-semibold mt-1">
+                      {forecast.temperature}°C
+                    </span>
+                  </div>
+                  <div className="ml-auto">
+                    <Icon className="w-8 h-8" strokeWidth={1.5} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop View (Original Row Layout) */}
           <div
             ref={scrollRef}
-            className="flex overflow-x-auto pb-4 gap-4 scrollbar-hide scroll-smooth cursor-grab active:cursor-grabbing"
+            className="hidden sm:flex overflow-x-auto pb-4 gap-4 scrollbar-hide scroll-smooth cursor-grab active:cursor-grabbing"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -155,21 +185,21 @@ export function HourlyForecast() {
             })}
           </div>
 
-          {/* Left Scroll Button */}
+          {/* Left Scroll Button (Desktop only) */}
           {showLeftIndicator && (
             <button
               onClick={() => scroll("left")}
-              className="absolute left-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer"
+              className="absolute left-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer hidden sm:block"
             >
               <ChevronLeft className="w-6 h-6 text-white" />
             </button>
           )}
 
-          {/* Right Scroll Button */}
+          {/* Right Scroll Button (Desktop only) */}
           {showRightIndicator && (
             <button
               onClick={() => scroll("right")}
-              className="absolute right-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer"
+              className="absolute right-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer hidden sm:block"
             >
               <ChevronRight className="w-6 h-6 text-white" />
             </button>
