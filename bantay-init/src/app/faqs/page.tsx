@@ -240,13 +240,13 @@ export default function FAQs() {
                   </li>
                 </ul>
               </div>
-              <div className="bg-gray-200 flex items-center justify-center p-4">
-                <div className="relative w-full h-64">
+              <div className="bg-gray-200 flex items-center justify-center">
+                <div className="relative w-full h-full">
                   <Image
-                    src="/placeholder.svg?height=300&width=400"
+                    src="/assets/b1n1t.png" // Updated to the new hero banner image
                     alt="BANTAY-1N1T Heat Sensor"
                     fill
-                    className="object-contain"
+                    className="object-cover"
                   />
                 </div>
               </div>
@@ -393,7 +393,7 @@ export default function FAQs() {
                         >
                           <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden bg-gray-200">
                             <Image
-                              src={`/placeholder.svg?height=150&width=150`}
+                              src={`/assets/team-member-${member}.png`} // Updated to the new team member images
                               alt={`Team Member ${member}`}
                               fill
                               className="object-cover"
