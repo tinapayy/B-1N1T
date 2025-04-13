@@ -6,15 +6,13 @@ export default function Loading() {
       <div className="flex flex-col items-center">
         <div className="relative w-20 h-20 animate-pulse">
           <Image
-            src="/assets/logo2.png"
+            src="/assets/logo_orange.png"
             alt="B-1N1T Loading"
-            fill
+            width={80}
+            height={80}
             className="object-contain"
           />
         </div>
-        <p className="mt-4 text-[var(--orange-primary)] font-medium">
-          Loading...
-        </p>
       </div>
     </div>
   );
