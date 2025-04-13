@@ -1,10 +1,5 @@
-import Dashboard from "@/app/pages/dashboard";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <>
-      {/* TO-DO: Sidebar here by Tina */}
-      <Dashboard />
-    </>
-  );
+  redirect("/dashboard");
 }
