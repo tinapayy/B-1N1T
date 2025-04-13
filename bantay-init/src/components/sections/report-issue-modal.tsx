@@ -54,6 +54,8 @@ export function ReportIssueModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+
     setIsSubmitting(true);
 
     // Simulate API call
@@ -77,12 +79,13 @@ export function ReportIssueModal({
     }, 1000);
   };
 
+  const handleContentClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-[500px]"
-        onPointerDownOutside={(e) => e.preventDefault()}
-      >
+      <DialogContent className="sm:max-w-[500px]" onClick={handleContentClick}>
         <DialogHeader>
           <DialogTitle>Report an Issue</DialogTitle>
           <DialogDescription>
@@ -180,7 +183,10 @@ export function ReportIssueModal({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenChange(false);
+                }}
               >
                 Cancel
               </Button>
