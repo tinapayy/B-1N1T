@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useState } from "react";
 import {
   Table,
@@ -47,9 +49,16 @@ interface Sensor {
 interface AdminSensorTableProps {
   sensors: Sensor[];
   onDelete: (id: number) => void;
+  onEdit: (sensor: Sensor) => void;
+  deviceType: "sensor" | "receiver";
 }
 
-export function AdminSensorTable({ sensors, onDelete }: AdminSensorTableProps) {
+export function AdminSensorTable({
+  sensors,
+  onDelete,
+  onEdit,
+  deviceType,
+}: AdminSensorTableProps) {
   const [sortField, setSortField] = useState<keyof Sensor>("sensorName");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -70,16 +79,23 @@ export function AdminSensorTable({ sensors, onDelete }: AdminSensorTableProps) {
     return 0;
   });
 
-  const confirmDelete = (id: number) => {
+  const confirmDelete = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop event propagation
     setDeleteId(id);
     setShowDeleteDialog(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop event propagation
     if (deleteId !== null) {
       onDelete(deleteId);
       setShowDeleteDialog(false);
     }
+  };
+
+  const handleEdit = (sensor: Sensor, e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop event propagation
+    onEdit(sensor);
   };
 
   const getStatusColor = (status: string) => {
@@ -105,6 +121,10 @@ export function AdminSensorTable({ sensors, onDelete }: AdminSensorTableProps) {
     );
   };
 
+  const handleDialogClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop event propagation
+  };
+
   return (
     <>
       <div className="overflow-x-auto">
@@ -117,7 +137,7 @@ export function AdminSensorTable({ sensors, onDelete }: AdminSensorTableProps) {
                   onClick={() => handleSort("sensorName")}
                 >
                   <div className="flex items-center">
-                    Sensor Name
+                    {deviceType === "sensor" ? "Sensor" : "Receiver"} Name
                     <SortIcon field="sensorName" />
                   </div>
                 </TableHead>
@@ -135,7 +155,7 @@ export function AdminSensorTable({ sensors, onDelete }: AdminSensorTableProps) {
                   onClick={() => handleSort("sensorId")}
                 >
                   <div className="flex items-center">
-                    Sensor ID
+                    {deviceType === "sensor" ? "Sensor" : "Device"} ID
                     <SortIcon field="sensorId" />
                   </div>
                 </TableHead>
@@ -144,7 +164,7 @@ export function AdminSensorTable({ sensors, onDelete }: AdminSensorTableProps) {
                   onClick={() => handleSort("receiverId")}
                 >
                   <div className="flex items-center">
-                    Receiver ID
+                    {deviceType === "sensor" ? "Receiver" : "Connected To"} ID
                     <SortIcon field="receiverId" />
                   </div>
                 </TableHead>
@@ -195,20 +215,29 @@ export function AdminSensorTable({ sensors, onDelete }: AdminSensorTableProps) {
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger
+                          asChild
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Button variant="ghost" size="icon">
                             <MoreHorizontal className="h-4 w-4" />
                             <span className="sr-only">Open menu</span>
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem className="cursor-pointer">
+                        <DropdownMenuContent
+                          align="end"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenuItem
+                            className="cursor-pointer"
+                            onClick={(e) => handleEdit(sensor, e)}
+                          >
                             <Edit className="mr-2 h-4 w-4" />
                             <span>Edit</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="cursor-pointer text-red-600 focus:text-red-600"
-                            onClick={() => confirmDelete(sensor.id)}
+                            onClick={(e) => confirmDelete(sensor.id, e)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
                             <span>Delete</span>
@@ -231,16 +260,18 @@ export function AdminSensorTable({ sensors, onDelete }: AdminSensorTableProps) {
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent onClick={handleDialogClick}>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              sensor and remove its data from our servers.
+              This action cannot be undone. This will permanently delete the{" "}
+              {deviceType} and remove its data from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700"
