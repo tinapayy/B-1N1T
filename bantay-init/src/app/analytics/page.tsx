@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sidebar } from "@/components/sections/sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Bell, Menu, Search, MapPin } from "lucide-react";
@@ -10,6 +9,7 @@ import LatestReadingCard from "@/app/analytics/LatestReadingCard";
 import HeatAlertTable from "@/app/analytics/HeatAlertTable";
 import AnalyticsLineChart from "@/app/analytics/AnalyticsLineChart";
 import WeeklyBarChart from "@/app/analytics/WeeklyBarChart";
+import { useSidebar } from "@/components/providers/sidebar-provider";
 
 // Sample data for the charts
 const monthlyData = [
@@ -75,7 +75,7 @@ const latestReading = {
 };
 
 export default function Analytics() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { setIsMobileMenuOpen } = useSidebar();
   const [selectedTimeframe, setSelectedTimeframe] = useState("Monthly");
   const [selectedAlertType, setSelectedAlertType] = useState("All Types");
   const [selectedHeatIndex, setSelectedHeatIndex] = useState("All Values");
@@ -96,12 +96,6 @@ export default function Analytics() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      {/* Sidebar */}
-      <Sidebar
-        isMobileMenuOpen={isMobileMenuOpen}
-        setIsMobileMenuOpen={setIsMobileMenuOpen}
-      />
-
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4 lg:p-6 lg:pt-4">
         {/* Location Search Card */}

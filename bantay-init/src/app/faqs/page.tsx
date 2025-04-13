@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Sidebar } from "@/components/sections/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Accordion,
@@ -12,6 +11,7 @@ import {
 import { Menu, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import { useSidebar } from "@/components/providers/sidebar-provider";
 
 // Define the FAQ item type
 interface FAQItem {
@@ -20,7 +20,7 @@ interface FAQItem {
 }
 
 export default function FAQs() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { setIsMobileMenuOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredFAQs, setFilteredFAQs] = useState<FAQItem[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -155,12 +155,6 @@ export default function FAQs() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      {/* Sidebar */}
-      <Sidebar
-        isMobileMenuOpen={isMobileMenuOpen}
-        setIsMobileMenuOpen={setIsMobileMenuOpen}
-      />
-
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4 lg:p-8">
         <div className="max-w-7xl mx-auto">
