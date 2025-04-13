@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Sidebar } from "@/components/sections/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Accordion,
@@ -12,6 +11,8 @@ import {
 import { Menu, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import { useSidebar } from "@/components/providers/sidebar-provider";
+import { SuspenseCard } from "@/components/ui/suspense-card";
 
 // Define the FAQ item type
 interface FAQItem {
@@ -20,7 +21,7 @@ interface FAQItem {
 }
 
 export default function FAQs() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { setIsMobileMenuOpen } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredFAQs, setFilteredFAQs] = useState<FAQItem[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -155,12 +156,6 @@ export default function FAQs() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      {/* Sidebar */}
-      <Sidebar
-        isMobileMenuOpen={isMobileMenuOpen}
-        setIsMobileMenuOpen={setIsMobileMenuOpen}
-      />
-
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4 lg:p-8">
         <div className="max-w-7xl mx-auto">
@@ -202,56 +197,69 @@ export default function FAQs() {
           </div>
 
           {/* Sensor Showcase */}
-          <Card className="bg-white rounded-3xl shadow-lg mb-8 overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-6 flex flex-col justify-center">
-                <h2 className="text-2xl font-bold text-[var(--orange-primary)] mb-4">
-                  BANTAY-1N1T Heat Monitoring System
-                </h2>
-                <p className="text-[var(--dark-gray-3)] mb-4">
-                  Our advanced IoT sensors provide real-time heat index
-                  monitoring to keep communities safe from extreme heat
-                  conditions.
-                </p>
-                <ul className="space-y-2">
-                  <li className="flex items-start">
-                    <span className="text-[var(--orange-primary)] mr-2">•</span>
-                    <span className="text-[var(--dark-gray-3)]">
-                      High-precision temperature and humidity sensors
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-[var(--orange-primary)] mr-2">•</span>
-                    <span className="text-[var(--dark-gray-3)]">
-                      Solar-powered with battery backup
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-[var(--orange-primary)] mr-2">•</span>
-                    <span className="text-[var(--dark-gray-3)]">
-                      Real-time data transmission
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-[var(--orange-primary)] mr-2">•</span>
-                    <span className="text-[var(--dark-gray-3)]">
-                      Weather-resistant enclosure
-                    </span>
-                  </li>
-                </ul>
-              </div>
-              <div className="bg-gray-200 flex items-center justify-center p-4">
-                <div className="relative w-full h-64">
-                  <Image
-                    src="/placeholder.svg?height=300&width=400"
-                    alt="BANTAY-1N1T Heat Sensor"
-                    fill
-                    className="object-contain"
-                  />
+          <SuspenseCard
+            height="min-h-[300px]"
+            className="bg-white rounded-3xl shadow-lg mb-8 overflow-hidden"
+          >
+            <Card className="bg-white rounded-3xl shadow-lg mb-8 overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-6 flex flex-col justify-center">
+                  <h2 className="text-2xl font-bold text-[var(--orange-primary)] mb-4">
+                    BANTAY-1N1T Heat Monitoring System
+                  </h2>
+                  <p className="text-[var(--dark-gray-3)] mb-4">
+                    Our advanced IoT sensors provide real-time heat index
+                    monitoring to keep communities safe from extreme heat
+                    conditions.
+                  </p>
+                  <ul className="space-y-2">
+                    <li className="flex items-start">
+                      <span className="text-[var(--orange-primary)] mr-2">
+                        •
+                      </span>
+                      <span className="text-[var(--dark-gray-3)]">
+                        High-precision temperature and humidity sensors
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-[var(--orange-primary)] mr-2">
+                        •
+                      </span>
+                      <span className="text-[var(--dark-gray-3)]">
+                        Solar-powered with battery backup
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-[var(--orange-primary)] mr-2">
+                        •
+                      </span>
+                      <span className="text-[var(--dark-gray-3)]">
+                        Real-time data transmission
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="text-[var(--orange-primary)] mr-2">
+                        •
+                      </span>
+                      <span className="text-[var(--dark-gray-3)]">
+                        Weather-resistant enclosure
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="bg-gray-200 flex items-center justify-center">
+                  <div className="relative w-full h-full">
+                    <Image
+                      src="/assets/b1n1t.png"
+                      alt="BANTAY-1N1T Heat Sensor"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          </SuspenseCard>
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-4 gap-6">
@@ -260,228 +268,261 @@ export default function FAQs() {
               {/* Order for mobile: FAQs, Team, then Heat Safety Tips */}
               <div className="flex flex-col space-y-6">
                 {/* FAQs Section */}
-                <Card className="bg-white rounded-3xl shadow-lg order-1">
-                  <CardContent className="p-6">
-                    {filteredFAQs.length > 0 ? (
-                      <Accordion
-                        type="single"
-                        collapsible
-                        className="w-full"
-                        defaultValue="item-0"
-                      >
-                        {filteredFAQs.map((item, index) => (
-                          <AccordionItem
-                            key={index}
-                            value={`item-${index}`}
-                            className="border-b border-gray-200 last:border-0"
-                          >
-                            <AccordionTrigger className="text-left font-medium py-4 text-[var(--orange-primary)] hover:text-[var(--orange-secondary)]">
-                              {item.question}
-                            </AccordionTrigger>
-                            <AccordionContent className="text-[var(--dark-gray-3)] pb-4">
-                              {item.answer}
-                            </AccordionContent>
-                          </AccordionItem>
-                        ))}
-                      </Accordion>
-                    ) : (
-                      <div className="text-center py-8">
-                        <p className="text-[var(--dark-gray-3)]">
-                          No questions found matching your search.
-                        </p>
-                        <button
-                          className="mt-4 text-[var(--orange-primary)] hover:text-[var(--orange-secondary)]"
-                          onClick={clearSearch}
+                <SuspenseCard
+                  height="min-h-[400px]"
+                  className="bg-white rounded-3xl shadow-lg order-1"
+                >
+                  <Card className="bg-white rounded-3xl shadow-lg order-1">
+                    <CardContent className="p-6">
+                      {filteredFAQs.length > 0 ? (
+                        <Accordion
+                          type="single"
+                          collapsible
+                          className="w-full"
+                          defaultValue="item-0"
                         >
-                          Clear search
-                        </button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                          {filteredFAQs.map((item, index) => (
+                            <AccordionItem
+                              key={index}
+                              value={`item-${index}`}
+                              className="border-b border-gray-200 last:border-0"
+                            >
+                              <AccordionTrigger className="text-left font-medium py-4 text-[var(--orange-primary)] hover:text-[var(--orange-secondary)]">
+                                {item.question}
+                              </AccordionTrigger>
+                              <AccordionContent className="text-[var(--dark-gray-3)] pb-4">
+                                {item.answer}
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-[var(--dark-gray-3)]">
+                            No questions found matching your search.
+                          </p>
+                          <button
+                            className="mt-4 text-[var(--orange-primary)] hover:text-[var(--orange-secondary)]"
+                            onClick={clearSearch}
+                          >
+                            Clear search
+                          </button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </SuspenseCard>
 
                 {/* Heat Safety Tips */}
-                <Card className="bg-white rounded-3xl shadow-lg order-2">
-                  <CardHeader>
-                    <CardTitle className="text-xl text-[var(--orange-primary)]">
-                      Heat Safety Tips
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 pt-0">
-                    <ul className="space-y-3 text-sm text-[var(--dark-gray-3)]">
-                      <li className="flex items-start">
-                        <span className="text-[var(--orange-primary)] mr-2">
-                          •
-                        </span>
-                        <span>
-                          <strong>Stay hydrated:</strong> Drink water regularly,
-                          even if you don't feel thirsty. Avoid alcohol and
-                          sugary drinks.
-                        </span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="text-[var(--orange-primary)] mr-2">
-                          •
-                        </span>
-                        <span>
-                          <strong>Dress appropriately:</strong> Wear
-                          lightweight, light-colored, loose-fitting clothing and
-                          a wide-brimmed hat.
-                        </span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="text-[var(--orange-primary)] mr-2">
-                          •
-                        </span>
-                        <span>
-                          <strong>Timing matters:</strong> Schedule outdoor
-                          activities during cooler hours.
-                        </span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="text-[var(--orange-primary)] mr-2">
-                          •
-                        </span>
-                        <span>
-                          <strong>Take breaks:</strong> Rest frequently in
-                          shaded or air-conditioned areas to allow your body to
-                          cool down.
-                        </span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="text-[var(--orange-primary)] mr-2">
-                          •
-                        </span>
-                        <span>
-                          <strong>Use sunscreen:</strong> Apply SPF 15+
-                          sunscreen 30 minutes before going outdoors and reapply
-                          as directed.
-                        </span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="text-[var(--orange-primary)] mr-2">
-                          •
-                        </span>
-                        <span>
-                          <strong>Check on others:</strong> Monitor those at
-                          high risk, including the elderly, children, and those
-                          with health conditions.
-                        </span>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
+                <SuspenseCard
+                  height="min-h-[300px]"
+                  hasHeader
+                  headerTitle="Heat Safety Tips"
+                  className="bg-white rounded-3xl shadow-lg order-2"
+                >
+                  <Card className="bg-white rounded-3xl shadow-lg order-2">
+                    <CardHeader>
+                      <CardTitle className="text-xl text-[var(--orange-primary)]">
+                        Heat Safety Tips
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0">
+                      <ul className="space-y-3 text-sm text-[var(--dark-gray-3)]">
+                        <li className="flex items-start">
+                          <span className="text-[var(--orange-primary)] mr-2">
+                            •
+                          </span>
+                          <span>
+                            <strong>Stay hydrated:</strong> Drink water
+                            regularly, even if you don't feel thirsty. Avoid
+                            alcohol and sugary drinks.
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-[var(--orange-primary)] mr-2">
+                            •
+                          </span>
+                          <span>
+                            <strong>Dress appropriately:</strong> Wear
+                            lightweight, light-colored, loose-fitting clothing
+                            and a wide-brimmed hat.
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-[var(--orange-primary)] mr-2">
+                            •
+                          </span>
+                          <span>
+                            <strong>Timing matters:</strong> Schedule outdoor
+                            activities during cooler hours.
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-[var(--orange-primary)] mr-2">
+                            •
+                          </span>
+                          <span>
+                            <strong>Take breaks:</strong> Rest frequently in
+                            shaded or air-conditioned areas to allow your body
+                            to cool down.
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-[var(--orange-primary)] mr-2">
+                            •
+                          </span>
+                          <span>
+                            <strong>Use sunscreen:</strong> Apply SPF 15+
+                            sunscreen 30 minutes before going outdoors and
+                            reapply as directed.
+                          </span>
+                        </li>
+                        <li className="flex items-start">
+                          <span className="text-[var(--orange-primary)] mr-2">
+                            •
+                          </span>
+                          <span>
+                            <strong>Check on others:</strong> Monitor those at
+                            high risk, including the elderly, children, and
+                            those with health conditions.
+                          </span>
+                        </li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </SuspenseCard>
 
                 {/* Team Section */}
-                <Card className="bg-white rounded-3xl shadow-lg order-3">
-                  <CardHeader>
-                    <CardTitle className="text-xl text-[var(--orange-primary)]">
-                      Meet Our Team
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 pt-0">
-                    <p className="text-[var(--dark-gray-3)] mb-6">
-                      Our dedicated team of engineers, data scientists, and
-                      public health experts work together to develop and
-                      maintain the BANTAY-1N1T heat monitoring system.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {[1, 2, 3].map((member) => (
-                        <div
-                          key={member}
-                          className="flex flex-col items-center"
-                        >
-                          <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden bg-gray-200">
-                            <Image
-                              src={`/placeholder.svg?height=150&width=150`}
-                              alt={`Team Member ${member}`}
-                              fill
-                              className="object-cover"
-                            />
+                <SuspenseCard
+                  height="min-h-[300px]"
+                  hasHeader
+                  headerTitle="Meet Our Team"
+                  className="bg-white rounded-3xl shadow-lg order-3"
+                >
+                  <Card className="bg-white rounded-3xl shadow-lg order-3">
+                    <CardHeader>
+                      <CardTitle className="text-xl text-[var(--orange-primary)]">
+                        Meet Our Team
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 pt-0">
+                      <p className="text-[var(--dark-gray-3)] mb-6">
+                        Our dedicated team of engineers, data scientists, and
+                        public health experts work together to develop and
+                        maintain the BANTAY-1N1T heat monitoring system.
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[1, 2, 3].map((member) => (
+                          <div
+                            key={member}
+                            className="flex flex-col items-center"
+                          >
+                            <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden bg-gray-200">
+                              <Image
+                                src={`/assets/team-member-${member}.png`}
+                                alt={`Team Member ${member}`}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <h3 className="font-medium text-[var(--dark-gray-1)]">
+                              Team Member {member}
+                            </h3>
+                            <p className="text-sm text-[var(--medium-gray)] text-center">
+                              {member === 1
+                                ? "Lead Developer"
+                                : member === 2
+                                ? "Full-Stack Developer"
+                                : "Project Engineer"}
+                            </p>
                           </div>
-                          <h3 className="font-medium text-[var(--dark-gray-1)]">
-                            Team Member {member}
-                          </h3>
-                          <p className="text-sm text-[var(--medium-gray)] text-center">
-                            {member === 1
-                              ? "Lead Developer"
-                              : member === 2
-                              ? "Full-Stack Developer"
-                              : "Project Engineer"}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </SuspenseCard>
               </div>
             </div>
 
             {/* Right Sidebar */}
             <div className="col-span-1 space-y-6">
               {/* Heat Warning Cards */}
-              <Card className="bg-white rounded-3xl shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-center text-lg text-[var(--dark-gray-1)]">
-                    Heat Index Warning Levels
-                  </CardTitle>
-                  <p className="text-center text-sm text-[var(--dark-gray-3)]">
-                    (Source: PAG-ASA)
-                  </p>
-                </CardHeader>
-                <CardContent className="p-6 pt-0 space-y-4">
-                  {heatWarnings.map((warning, index) => (
-                    <div
-                      key={index}
-                      className={`${warning.color} rounded-lg p-4`}
-                    >
-                      <div className="font-bold text-center">
-                        {warning.level}
+              <SuspenseCard
+                height="min-h-[400px]"
+                hasHeader
+                headerTitle="Heat Index Warning Levels"
+                className="bg-white rounded-3xl shadow-lg"
+              >
+                <Card className="bg-white rounded-3xl shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="text-center text-lg text-[var(--dark-gray-1)]">
+                      Heat Index Warning Levels
+                    </CardTitle>
+                    <p className="text-center text-sm text-[var(--dark-gray-3)]">
+                      (Source: PAG-ASA)
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-0 space-y-4">
+                    {heatWarnings.map((warning, index) => (
+                      <div
+                        key={index}
+                        className={`${warning.color} rounded-lg p-4`}
+                      >
+                        <div className="font-bold text-center">
+                          {warning.level}
+                        </div>
+                        <div className="text-center font-medium">
+                          {warning.range}
+                        </div>
+                        <p className="text-sm mt-2 text-center">
+                          {warning.description}
+                        </p>
                       </div>
-                      <div className="text-center font-medium">
-                        {warning.range}
-                      </div>
-                      <p className="text-sm mt-2 text-center">
-                        {warning.description}
-                      </p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+                    ))}
+                  </CardContent>
+                </Card>
+              </SuspenseCard>
 
               {/* Need More Help Section */}
-              <Card className="bg-white rounded-3xl shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-xl text-[var(--orange-primary)]">
-                    Need More Help?
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 pt-0">
-                  <p className="text-[var(--dark-gray-3)] mb-4">
-                    If you couldn't find the answer to your question in our FAQ
-                    section, please don't hesitate to reach out to our dedicated
-                    team for personalized assistance.
-                  </p>
-                  <div className="grid grid-cols-1 gap-4">
-                    <Card className="bg-[var(--off-white)] p-4 rounded-xl">
-                      <div className="font-medium mb-2 text-[var(--dark-gray-1)]">
-                        Email Support
-                      </div>
-                      <p className="text-sm text-[var(--dark-gray-3)] break-words">
-                        support@bantay-1n1t.com
-                      </p>
-                    </Card>
-                    <Card className="bg-[var(--off-white)] p-4 rounded-xl">
-                      <div className="font-medium mb-2 text-[var(--dark-gray-1)]">
-                        Phone Support
-                      </div>
-                      <p className="text-sm text-[var(--dark-gray-3)] break-words">
-                        +63 (916) 123-4567
-                      </p>
-                    </Card>
-                  </div>
-                </CardContent>
-              </Card>
+              <SuspenseCard
+                height="min-h-[300px]"
+                hasHeader
+                headerTitle="Need More Help?"
+                className="bg-white rounded-3xl shadow-lg"
+              >
+                <Card className="bg-white rounded-3xl shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="text-xl text-[var(--orange-primary)]">
+                      Need More Help?
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-0">
+                    <p className="text-[var(--dark-gray-3)] mb-4">
+                      If you couldn't find the answer to your question in our
+                      FAQ section, please don't hesitate to reach out to our
+                      dedicated team for personalized assistance.
+                    </p>
+                    <div className="grid grid-cols-1 gap-4">
+                      <Card className="bg-[var(--off-white)] p-4 rounded-xl">
+                        <div className="font-medium mb-2 text-[var(--dark-gray-1)]">
+                          Email Support
+                        </div>
+                        <p className="text-sm text-[var(--dark-gray-3)] break-words">
+                          support@bantay-1n1t.com
+                        </p>
+                      </Card>
+                      <Card className="bg-[var(--off-white)] p-4 rounded-xl">
+                        <div className="font-medium mb-2 text-[var(--dark-gray-1)]">
+                          Phone Support
+                        </div>
+                        <p className="text-sm text-[var(--dark-gray-3)] break-words">
+                          +63 (916) 123-4567
+                        </p>
+                      </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              </SuspenseCard>
             </div>
           </div>
         </div>

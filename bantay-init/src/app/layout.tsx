@@ -1,13 +1,9 @@
+import type React from "react";
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
-import { Sidebar } from "@/components/sections/sidebar";
+import { ThemeProvider } from "next-themes";
+import { AppLayout } from "@/components/layouts/app-layout";
+import { AuthProvider } from "@/components/providers/auth-provider";
 import "./globals.css";
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "B-1N1T Dashboard",
@@ -20,12 +16,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={poppins.className}>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 p-4 md:ml-20 lg:ml-64">{children}</main>
-        </div>
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <AuthProvider>
+            <AppLayout>{children}</AppLayout>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

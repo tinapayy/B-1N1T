@@ -166,7 +166,7 @@ export function HourlyForecast() {
               return (
                 <div
                   key={forecast.time}
-                  className="flex-none w-[120px] h-[180px] bg-[#2f2f2f] rounded-[24px] flex flex-col items-center justify-between p-6 text-white"
+                  className="flex-none w-[125px] h-[180px] bg-[#2f2f2f] rounded-[24px] flex flex-col items-center justify-between p-6 text-white"
                   style={{
                     boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.1)",
                     background:
