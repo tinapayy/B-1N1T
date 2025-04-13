@@ -21,11 +21,15 @@ interface AddReceiverFormProps {
     lng: number;
     address: string;
   } | null;
+  editingDevice?: any;
+  onCancel: () => void;
 }
 
 export function AddReceiverForm({
   onAdd,
   selectedLocation,
+  editingDevice,
+  onCancel,
 }: AddReceiverFormProps) {
   const [formData, setFormData] = useState({
     receiverName: "",
@@ -35,6 +39,20 @@ export function AddReceiverForm({
     location: "",
     connectedSensor: "",
   });
+
+  // Update form when editing device is set
+  useEffect(() => {
+    if (editingDevice) {
+      setFormData({
+        receiverName: editingDevice.sensorName || "",
+        receiverId: editingDevice.receiverId || "",
+        longitude: editingDevice.longitude || "",
+        latitude: editingDevice.latitude || "",
+        location: editingDevice.location || "",
+        connectedSensor: editingDevice.sensorId || "",
+      });
+    }
+  }, [editingDevice]);
 
   // Update form when location is selected on map
   useEffect(() => {
@@ -66,14 +84,18 @@ export function AddReceiverForm({
       location: formData.location,
       sensorId: formData.connectedSensor,
       receiverId: formData.receiverId,
-      registerDate: new Date()
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .replace(/\//g, "."),
-      status: "Offline",
+      registerDate:
+        editingDevice?.registerDate ||
+        new Date()
+          .toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .replace(/\//g, "."),
+      status: editingDevice?.status || "Offline",
+      longitude: formData.longitude,
+      latitude: formData.latitude,
     };
 
     onAdd(newReceiver);
@@ -188,6 +210,7 @@ export function AddReceiverForm({
               location: "",
               connectedSensor: "",
             });
+            onCancel();
           }}
         >
           Cancel
@@ -196,7 +219,7 @@ export function AddReceiverForm({
           type="submit"
           className="bg-[var(--orange-primary)] hover:bg-orange-600"
         >
-          + Add
+          {editingDevice ? "Update" : "+ Add"}
         </Button>
       </div>
     </form>

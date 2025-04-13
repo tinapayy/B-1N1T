@@ -14,9 +14,16 @@ interface AddSensorFormProps {
     lng: number;
     address: string;
   } | null;
+  editingDevice?: any;
+  onCancel: () => void;
 }
 
-export function AddSensorForm({ onAdd, selectedLocation }: AddSensorFormProps) {
+export function AddSensorForm({
+  onAdd,
+  selectedLocation,
+  editingDevice,
+  onCancel,
+}: AddSensorFormProps) {
   const [formData, setFormData] = useState({
     sensorName: "",
     sensorId: "",
@@ -26,6 +33,21 @@ export function AddSensorForm({ onAdd, selectedLocation }: AddSensorFormProps) {
     latitude: "",
     location: "",
   });
+
+  // Update form when editing device is set
+  useEffect(() => {
+    if (editingDevice) {
+      setFormData({
+        sensorName: editingDevice.sensorName || "",
+        sensorId: editingDevice.sensorId || "",
+        receiverName: editingDevice.receiverName || "",
+        receiverId: editingDevice.receiverId || "",
+        longitude: editingDevice.longitude || "",
+        latitude: editingDevice.latitude || "",
+        location: editingDevice.location || "",
+      });
+    }
+  }, [editingDevice]);
 
   // Update form when location is selected on map
   useEffect(() => {
@@ -53,14 +75,18 @@ export function AddSensorForm({ onAdd, selectedLocation }: AddSensorFormProps) {
       location: formData.location,
       sensorId: formData.sensorId,
       receiverId: formData.receiverId,
-      registerDate: new Date()
-        .toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .replace(/\//g, "."),
-      status: "Offline",
+      registerDate:
+        editingDevice?.registerDate ||
+        new Date()
+          .toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+          .replace(/\//g, "."),
+      status: editingDevice?.status || "Offline",
+      longitude: formData.longitude,
+      latitude: formData.latitude,
     };
 
     onAdd(newSensor);
@@ -179,6 +205,7 @@ export function AddSensorForm({ onAdd, selectedLocation }: AddSensorFormProps) {
               latitude: "",
               location: "",
             });
+            onCancel();
           }}
         >
           Cancel
@@ -187,7 +214,7 @@ export function AddSensorForm({ onAdd, selectedLocation }: AddSensorFormProps) {
           type="submit"
           className="bg-[var(--orange-primary)] hover:bg-orange-600"
         >
-          + Add
+          {editingDevice ? "Update" : "+ Add"}
         </Button>
       </div>
     </form>
