@@ -10,6 +10,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { format } from "date-fns";
+import { ref, onValue } from "firebase/database";
+import { database } from "@/lib/firebase";
 
 interface WeatherGaugeProps {
   location: string;
@@ -30,26 +32,24 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 
   useEffect(() => {
-    fetch("/api/readings/latest?sensorId=sensor-001")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch latest reading");
-        return res.json();
-      })
-      .then((data) => {
+    const sensorRef = ref(database, "sensor_latest/sensor-001");
+
+    const unsubscribe = onValue(sensorRef, (snapshot) => {
+      const data = snapshot.val();
+      console.log("🔥 RTDB data received:", data);
+      if (data) {
         setLatestReading({
-          id: data.sensorId,
-          heatIndex: data.heatIndex,
+          id: "sensor-001",
           temperature: data.temperature,
           humidity: data.humidity,
+          heatIndex: data.heatIndex,
           timestamp: data.timestamp,
         });
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error loading sensor data:", err);
-        setError(err);
-        setLoading(false);
-      });
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (loading || !latestReading) {
@@ -67,21 +67,13 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
   const { temperature, humidity, heatIndex, timestamp } = latestReading;
   const heatIndexNumber = heatIndex ? parseFloat(heatIndex.toFixed(4)) : 0;
 
-  const isServerTimestamp =
-    typeof timestamp === "object" && ".sv" in timestamp;
-  let actualTimestamp = Date.now();
+  let actualTimestamp = Date.now(); // fallback
 
-  if (!isServerTimestamp && timestamp) {
-    const parsed = new Date(timestamp);
-    if (!isNaN(parsed.getTime())) {
-      actualTimestamp = parsed.getTime();
-    }
+  if (typeof timestamp === "number") {
+    actualTimestamp = timestamp;
   }
 
-  const formattedDate = format(
-    new Date(actualTimestamp),
-    "MMM. d, yyyy, EEEE"
-  );
+  const formattedDate = format(new Date(actualTimestamp), "MMM. d, yyyy, EEEE");
   const formattedTime = format(new Date(actualTimestamp), "h:mm:ss a");
 
   const getHeatIndexStatus = (value: number) => {
@@ -160,7 +152,7 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
           </ResponsiveContainer>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-2 text-center">
             <div className="text-2xl sm:text-3xl lg:text-3xl font-bold">
-              {heatIndexNumber.toFixed(2)}°C
+              {typeof heatIndexNumber === "number" ? heatIndexNumber.toFixed(2) : "--"}°C
             </div>
             <div className="text-xs sm:text-sm text-gray-600">Heat Index</div>
           </div>
@@ -170,7 +162,7 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
         <div className="flex justify-between items-center mb-3 sm:mb-4">
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <Thermometer className="w-4 h-4" />
-            <span>{temperature.toFixed(1)}°C</span>
+            <span>{typeof temperature === "number" ? temperature.toFixed(1) : "--"}°C</span>
           </div>
           <div className="flex flex-col items-center">
             <div
@@ -185,7 +177,7 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
           </div>
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <Droplets className="w-4 h-4" />
-            <span>{humidity.toFixed(1)}%</span>
+            <span>{typeof humidity === "number" ? humidity.toFixed(1) : "--"}%</span>
           </div>
         </div>
 
