@@ -13,6 +13,7 @@ import {
   Sun,
   Info,
   AlertTriangle,
+  UserCog,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { AdminLoginModal } from "@/components/sections/admin-login-modal";
@@ -231,7 +232,7 @@ export function Sidebar() {
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content
-                  className="z-50 mt-1 w-48 rounded-md bg-white py-1 shadow-lg"
+                  className="z-50 mt-1 mr-2 md:ml-3 w-48 rounded-md bg-white py-1 shadow-lg"
                   sideOffset={5}
                   align="end"
                 >
@@ -262,9 +263,10 @@ export function Sidebar() {
                   </DropdownMenu.Item>
                   <DropdownMenu.Separator className="my-1 h-px bg-gray-200" />
                   <DropdownMenu.Item
-                    className="cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
+                    className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
                     onClick={handleOpenAdminModal}
                   >
+                    <UserCog className="w-4 h-4" />
                     Admin Login
                   </DropdownMenu.Item>
                 </DropdownMenu.Content>
