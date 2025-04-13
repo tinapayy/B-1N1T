@@ -9,7 +9,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import useFirebaseData from "../../lib/useFirebaseData";
 import { format } from "date-fns";
 
 interface WeatherGaugeProps {
@@ -25,24 +24,33 @@ interface Reading {
 }
 
 export default function WeatherGauge({ location }: WeatherGaugeProps) {
-  const { data, loading, error } = useFirebaseData("/readings");
   const [latestReading, setLatestReading] = useState<Reading | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 
   useEffect(() => {
-    if (data) {
-      let latest: Reading | null = null;
-
-      for (const key in data) {
-        const reading = data[key] as Reading;
-        if (!latest || reading.timestamp > latest.timestamp) {
-          latest = reading;
-        }
-      }
-
-      setLatestReading(latest);
-    }
-  }, [data]);
+    fetch("/api/readings/latest?sensorId=sensor-001")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch latest reading");
+        return res.json();
+      })
+      .then((data) => {
+        setLatestReading({
+          id: data.sensorId,
+          heatIndex: data.heatIndex,
+          temperature: data.temperature,
+          humidity: data.humidity,
+          timestamp: data.timestamp,
+        });
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error loading sensor data:", err);
+        setError(err);
+        setLoading(false);
+      });
+  }, []);
 
   if (loading || !latestReading) {
     return <div className="p-4 text-center">Loading...</div>;
@@ -61,7 +69,14 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
 
   const isServerTimestamp =
     typeof timestamp === "object" && ".sv" in timestamp;
-  const actualTimestamp = isServerTimestamp ? Date.now() : timestamp;
+  let actualTimestamp = Date.now();
+
+  if (!isServerTimestamp && timestamp) {
+    const parsed = new Date(timestamp);
+    if (!isNaN(parsed.getTime())) {
+      actualTimestamp = parsed.getTime();
+    }
+  }
 
   const formattedDate = format(
     new Date(actualTimestamp),
