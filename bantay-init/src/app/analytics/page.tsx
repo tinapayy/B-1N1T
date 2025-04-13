@@ -10,6 +10,7 @@ import HeatAlertTable from "@/app/analytics/HeatAlertTable";
 import AnalyticsLineChart from "@/app/analytics/AnalyticsLineChart";
 import WeeklyBarChart from "@/app/analytics/WeeklyBarChart";
 import { useSidebar } from "@/components/providers/sidebar-provider";
+import { SuspenseCard } from "@/components/ui/suspense-card";
 
 // Sample data for the charts
 const monthlyData = [
@@ -99,143 +100,198 @@ export default function Analytics() {
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4 lg:p-6 lg:pt-4">
         {/* Location Search Card */}
-        <Card className="bg-white rounded-3xl shadow-sm mb-4">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-[var(--orange-primary)]" />
-                <span className="font-medium">{location}</span>
+        <SuspenseCard
+          height="h-[80px]"
+          className="bg-white rounded-3xl shadow-sm mb-4"
+        >
+          <Card className="bg-white rounded-3xl shadow-sm mb-4">
+            <CardContent className="p-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-[var(--orange-primary)]" />
+                  <span className="font-medium">{location}</span>
+                </div>
+                <div className="relative flex-1 max-w-md ml-auto">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="search"
+                    placeholder="Search city..."
+                    className="pl-10 w-full"
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        // In a real app, this would trigger a search
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon">
+                    <Bell className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="md:hidden"
+                    onClick={() => setIsMobileMenuOpen(true)}
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
-              <div className="relative flex-1 max-w-md ml-auto">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="search"
-                  placeholder="Search city..."
-                  className="pl-10 w-full"
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      // In a real app, this would trigger a search
-                    }
-                  }}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon">
-                  <Bell className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="md:hidden"
-                  onClick={() => setIsMobileMenuOpen(true)}
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </SuspenseCard>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Main Analytics Chart */}
-          <AnalyticsLineChart
-            data={monthlyData}
-            timeframe={selectedTimeframe}
-            setTimeframe={setSelectedTimeframe}
-          />
+          <SuspenseCard
+            height="min-h-[300px]"
+            className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-sm"
+          >
+            <AnalyticsLineChart
+              data={monthlyData}
+              timeframe={selectedTimeframe}
+              setTimeframe={setSelectedTimeframe}
+            />
+          </SuspenseCard>
 
           {/* Highest Daily Record */}
-          <LatestReadingCard latest={latestReading} />
+          <SuspenseCard
+            height="min-h-[300px]"
+            className="col-span-1 bg-white rounded-3xl shadow-sm"
+          >
+            <LatestReadingCard latest={latestReading} />
+          </SuspenseCard>
         </div>
 
         {/* Mobile Stats Cards - Only visible on small screens */}
         <div className="grid grid-cols-3 gap-4 mt-4 sm:hidden">
-          <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
-            <CardContent className="p-3">
-              <div className="text-center">
-                <div className="text-2xl font-bold">48</div>
-                <div className="text-xs mt-1">Monthly</div>
-                <div className="text-xs">Alerts</div>
-              </div>
-            </CardContent>
-          </Card>
+          <SuspenseCard
+            height="h-[100px]"
+            className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm"
+          >
+            <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
+              <CardContent className="p-3">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">48</div>
+                  <div className="text-xs mt-1">Monthly</div>
+                  <div className="text-xs">Alerts</div>
+                </div>
+              </CardContent>
+            </Card>
+          </SuspenseCard>
 
-          <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm">
-            <CardContent className="p-3">
-              <div className="text-center">
-                <div className="text-2xl font-bold">51°C</div>
-                <div className="text-xs mt-1">Peak</div>
-                <div className="text-xs">Heat</div>
-              </div>
-            </CardContent>
-          </Card>
+          <SuspenseCard
+            height="h-[100px]"
+            className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm"
+          >
+            <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm">
+              <CardContent className="p-3">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">51°C</div>
+                  <div className="text-xs mt-1">Peak</div>
+                  <div className="text-xs">Heat</div>
+                </div>
+              </CardContent>
+            </Card>
+          </SuspenseCard>
 
-          <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
-            <CardContent className="p-3">
-              <div className="text-center">
-                <div className="text-2xl font-bold">+2°C</div>
-                <div className="text-xs mt-1">Change</div>
-                <div className="text-xs">Since</div>
-              </div>
-            </CardContent>
-          </Card>
+          <SuspenseCard
+            height="h-[100px]"
+            className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm"
+          >
+            <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
+              <CardContent className="p-3">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">+2°C</div>
+                  <div className="text-xs mt-1">Change</div>
+                  <div className="text-xs">Since</div>
+                </div>
+              </CardContent>
+            </Card>
+          </SuspenseCard>
         </div>
 
         {/* Second Row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 xl:grid-cols-12 gap-4 mt-4">
           {/* Stats Cards - Hidden on small screens, row layout on medium screens */}
           <div className="hidden sm:grid sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-1 col-span-12 lg:col-span-2 xl:col-span-2 gap-4 text-center">
-            <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
-              <CardContent className="p-4">
-                <div className="text-center">
-                  <div className="text-3xl font-bold">48</div>
-                  <div className="text-xs mt-1">Monthly</div>
-                  <div className="text-xs">Extreme Alerts</div>
-                </div>
-              </CardContent>
-            </Card>
+            <SuspenseCard
+              height="h-[120px]"
+              className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm"
+            >
+              <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold">48</div>
+                    <div className="text-xs mt-1">Monthly</div>
+                    <div className="text-xs">Extreme Alerts</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </SuspenseCard>
 
-            <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm">
-              <CardContent className="p-4">
-                <div className="text-center">
-                  <div className="text-3xl font-bold">51°C</div>
-                  <div className="text-xs mt-1">Peak</div>
-                  <div className="text-xs">Heat Index</div>
-                </div>
-              </CardContent>
-            </Card>
+            <SuspenseCard
+              height="h-[120px]"
+              className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm"
+            >
+              <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm">
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold">51°C</div>
+                    <div className="text-xs mt-1">Peak</div>
+                    <div className="text-xs">Heat Index</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </SuspenseCard>
 
-            <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
-              <CardContent className="p-4">
-                <div className="text-center">
-                  <div className="text-3xl font-bold">+2°C</div>
-                  <div className="text-xs mt-1">Change Since</div>
-                  <div className="text-xs">Last Month</div>
-                </div>
-              </CardContent>
-            </Card>
+            <SuspenseCard
+              height="h-[120px]"
+              className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm"
+            >
+              <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
+                <CardContent className="p-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold">+2°C</div>
+                    <div className="text-xs mt-1">Change Since</div>
+                    <div className="text-xs">Last Month</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </SuspenseCard>
           </div>
 
           {/* Heat Alerts Table and Weekly Chart - Stack between 1028px and 1400px */}
           <div className="col-span-12 lg:col-span-10 xl:grid xl:grid-cols-10 gap-4">
             <div className="xl:col-span-6 mb-4 xl:mb-0">
-              <HeatAlertTable
-                alerts={alertsData}
-                selectedAlertType={selectedAlertType}
-                setSelectedAlertType={setSelectedAlertType}
-                selectedHeatIndex={selectedHeatIndex}
-                setSelectedHeatIndex={setSelectedHeatIndex}
-                selectedDateRange={selectedDateRange}
-                setSelectedDateRange={setSelectedDateRange}
-              />
+              <SuspenseCard
+                height="min-h-[350px]"
+                className="bg-white rounded-3xl shadow-sm"
+              >
+                <HeatAlertTable
+                  alerts={alertsData}
+                  selectedAlertType={selectedAlertType}
+                  setSelectedAlertType={setSelectedAlertType}
+                  selectedHeatIndex={selectedHeatIndex}
+                  setSelectedHeatIndex={setSelectedHeatIndex}
+                  selectedDateRange={selectedDateRange}
+                  setSelectedDateRange={setSelectedDateRange}
+                />
+              </SuspenseCard>
             </div>
 
             <div className="xl:col-span-4">
-              <WeeklyBarChart
-                data={weeklyData}
-                isMobile={isMobile}
-                isTablet={isTablet}
-              />
+              <SuspenseCard
+                height="min-h-[350px]"
+                className="bg-white rounded-3xl shadow-sm"
+              >
+                <WeeklyBarChart
+                  data={weeklyData}
+                  isMobile={isMobile}
+                  isTablet={isTablet}
+                />
+              </SuspenseCard>
             </div>
           </div>
         </div>
