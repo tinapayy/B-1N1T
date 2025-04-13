@@ -14,12 +14,15 @@ import {
   Info,
   AlertTriangle,
   UserCog,
+  LogOut,
+  Shield,
 } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { AdminLoginModal } from "@/components/sections/admin-login-modal";
 import { ReportIssueModal } from "@/components/sections/report-issue-modal";
 import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/providers/sidebar-provider";
+import { useAuth } from "@/components/providers/auth-provider";
 import useMedia from "use-media";
 
 const navigation = [
@@ -32,6 +35,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { user, isAdmin, logout } = useAuth();
   const {
     dropdownOpen,
     setDropdownOpen,
@@ -72,6 +76,11 @@ export function Sidebar() {
     setTimeout(() => {
       setIsReportModalOpen(true);
     }, 100);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setDropdownOpen(false);
   };
 
   return (
@@ -119,6 +128,22 @@ export function Sidebar() {
             );
           })}
 
+          {/* Admin Dashboard Link - Only visible to admins */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`flex items-center space-x-4 py-3 text-sm font-medium ${
+                pathname.startsWith("/admin")
+                  ? "text-white"
+                  : "text-white/70 hover:text-white"
+              }`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <Shield className="h-6 w-6 flex-shrink-0" />
+              <span>Admin</span>
+            </Link>
+          )}
+
           {isMobile && (
             <DropdownMenu.Root
               open={dropdownOpen}
@@ -162,12 +187,23 @@ export function Sidebar() {
                     Report an Issue
                   </DropdownMenu.Item>
                   <DropdownMenu.Separator className="my-1 h-px bg-gray-200" />
-                  <DropdownMenu.Item
-                    className="cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
-                    onClick={handleOpenAdminModal}
-                  >
-                    Admin Login
-                  </DropdownMenu.Item>
+                  {user ? (
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </DropdownMenu.Item>
+                  ) : (
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
+                      onClick={handleOpenAdminModal}
+                    >
+                      <UserCog className="w-4 h-4" />
+                      Admin Login
+                    </DropdownMenu.Item>
+                  )}
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
@@ -219,6 +255,24 @@ export function Sidebar() {
             );
           })}
 
+          {/* Admin Dashboard Link - Only visible to admins */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`relative flex items-center pl-7 lg:pl-14 rounded-lg py-3 text-sm font-medium ${
+                pathname.startsWith("/admin")
+                  ? "text-white"
+                  : "text-white/70 hover:text-white"
+              }`}
+            >
+              {pathname.startsWith("/admin") && (
+                <span className="absolute left-2 top-0 hidden h-full w-1 bg-white rounded-full lg:block" />
+              )}
+              <Shield className="h-6 w-6 flex-shrink-0" />
+              <span className="hidden lg:inline-block ml-3">Admin</span>
+            </Link>
+          )}
+
           {!isMobile && (
             <DropdownMenu.Root
               open={dropdownOpen}
@@ -232,7 +286,7 @@ export function Sidebar() {
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content
-                  className="z-50 mt-1 mr-2 md:ml-3 w-48 rounded-md bg-white py-1 shadow-lg"
+                  className="z-50 mt-1 w-48 rounded-md bg-white py-1 shadow-lg"
                   sideOffset={5}
                   align="end"
                 >
@@ -262,13 +316,23 @@ export function Sidebar() {
                     Report an Issue
                   </DropdownMenu.Item>
                   <DropdownMenu.Separator className="my-1 h-px bg-gray-200" />
-                  <DropdownMenu.Item
-                    className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
-                    onClick={handleOpenAdminModal}
-                  >
-                    <UserCog className="w-4 h-4" />
-                    Admin Login
-                  </DropdownMenu.Item>
+                  {user ? (
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </DropdownMenu.Item>
+                  ) : (
+                    <DropdownMenu.Item
+                      className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
+                      onClick={handleOpenAdminModal}
+                    >
+                      <UserCog className="w-4 h-4" />
+                      Admin Login
+                    </DropdownMenu.Item>
+                  )}
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
             </DropdownMenu.Root>

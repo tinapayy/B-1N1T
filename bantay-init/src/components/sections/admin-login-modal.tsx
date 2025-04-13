@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock, User } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface AdminLoginModalProps {
   open: boolean;
@@ -24,6 +25,7 @@ interface AdminLoginModalProps {
 
 export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
   const router = useRouter();
+  const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -36,10 +38,9 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
     setError("");
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you would validate credentials against your backend
-      if (username === "admin" && password === "password") {
+    try {
+      const success = await login(username, password);
+      if (success) {
         setIsLoading(false);
         onOpenChange(false);
         router.push("/admin");
@@ -47,7 +48,10 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
         setError("Invalid username or password");
         setIsLoading(false);
       }
-    }, 1000);
+    } catch (error) {
+      setError("An error occurred during login");
+      setIsLoading(false);
+    }
   };
 
   const handleContentClick = (e: React.MouseEvent) => {
