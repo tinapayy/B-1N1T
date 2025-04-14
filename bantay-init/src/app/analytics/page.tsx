@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Bell, Menu, Search, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import LatestReadingCard from "@/app/analytics/LatestReadingCard";
+import HighestReadingCard from "@/app/analytics/HighestReadingCard";
 import HeatAlertTable from "@/app/analytics/HeatAlertTable";
 import AnalyticsLineChart from "@/app/analytics/AnalyticsLineChart";
 import WeeklyBarChart from "@/app/analytics/WeeklyBarChart";
@@ -66,8 +66,8 @@ const alertsData = [
   },
 ];
 
-// Latest reading data
-const latestReading = {
+// Highest reading data
+const highestReading = {
   temperature: 31,
   humidity: 22,
   heatIndex: 28,
@@ -85,11 +85,9 @@ export default function Analytics() {
 
   const [trendData, setTrendData] = useState([]);
   useEffect(() => {
-    const fetchTrends = async () => {
-      try {
-        const res = await fetch("/api/analytics/trends");
-        const data = await res.json();
-
+    fetch("/api/analytics/trends")
+      .then((res) => res.json())
+      .then((data) => {
         const formatted = data.map((d: {
           date: string;
           averageHeatIndex: number;
@@ -101,18 +99,9 @@ export default function Analytics() {
           temperature: d.averageTemperature,
           humidity: d.averageHumidity,
         }));
-
         setTrendData(formatted);
-      } catch (err) {
-        console.error("Error fetching trends:", err);
-      }
-    };
-
-    fetchTrends(); // initial fetch
-
-    const interval = setInterval(fetchTrends, 5000); // fetch every 5 seconds
-
-    return () => clearInterval(interval); // cleanup
+      })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -182,7 +171,8 @@ export default function Analytics() {
           />
 
           {/* Highest Daily Record */}
-          <LatestReadingCard latest={latestReading} />
+          <HighestReadingCard highest={highestReading} />
+          
         </div>
 
         {/* Mobile Stats Cards - Only visible on small screens */}
