@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
  * - start: ISO date string (e.g., 2024-04-01)
  * - end: ISO date string (e.g., 2024-04-10)
  * 
- * Returns daily average heat index values grouped by date,
+ * Returns daily average heat index, temperature, and humidity values grouped by date,
  * ideal for time-series line charts in the analytics dashboard.
  */
 export async function GET(req: Request) {
@@ -38,23 +38,36 @@ export async function GET(req: Request) {
     const snapshot = await readingsQuery.get();
 
     // Group data by date string
-    const dateMap: Record<string, number[]> = {};
+    const dateMap: Record<string, { hi: number[]; temp: number[]; hum: number[] }> = {};
 
     snapshot.forEach((doc) => {
       const data = doc.data();
       const date = new Date(data.timestamp.toDate ? data.timestamp.toDate() : data.timestamp)
         .toISOString()
-        .split("T")[0]; // YYYY-MM-DD
+        .split("T")[0];
 
-      if (!dateMap[date]) dateMap[date] = [];
-      if (data.heatIndex) dateMap[date].push(data.heatIndex);
+      if (!dateMap[date]) {
+        dateMap[date] = { hi: [], temp: [], hum: [] };
+      }
+
+      if (data.heatIndex) dateMap[date].hi.push(data.heatIndex);
+      if (data.temperature) dateMap[date].temp.push(data.temperature);
+      if (data.humidity) dateMap[date].hum.push(data.humidity);
     });
 
-    // Compute average heat index per date
+    // Compute averages per date
     const result = Object.entries(dateMap).map(([date, values]) => {
-      const sum = values.reduce((a, b) => a + b, 0);
-      const avg = values.length > 0 ? parseFloat((sum / values.length).toFixed(2)) : 0;
-      return { date, averageHeatIndex: avg };
+      const avg = (arr: number[]) =>
+        arr.length > 0
+          ? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2))
+          : 0;
+
+      return {
+        date,
+        averageHeatIndex: avg(values.hi),
+        averageTemperature: avg(values.temp),
+        averageHumidity: avg(values.hum),
+      };
     });
 
     // Sort by date ascending
