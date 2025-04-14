@@ -73,7 +73,6 @@ const latestReading = {
   heatIndex: 28,
   timestamp: new Date().getTime(),
 };
-
 export default function Analytics() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState("Monthly");
@@ -83,6 +82,38 @@ export default function Analytics() {
   const [location, setLocation] = useState("Miagao, Iloilo");
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
+
+  const [trendData, setTrendData] = useState([]);
+  useEffect(() => {
+    const fetchTrends = async () => {
+      try {
+        const res = await fetch("/api/analytics/trends");
+        const data = await res.json();
+
+        const formatted = data.map((d: {
+          date: string;
+          averageHeatIndex: number;
+          averageTemperature: number;
+          averageHumidity: number;
+        }) => ({
+          month: d.date,
+          heatIndex: d.averageHeatIndex,
+          temperature: d.averageTemperature,
+          humidity: d.averageHumidity,
+        }));
+
+        setTrendData(formatted);
+      } catch (err) {
+        console.error("Error fetching trends:", err);
+      }
+    };
+
+    fetchTrends(); // initial fetch
+
+    const interval = setInterval(fetchTrends, 5000); // fetch every 5 seconds
+
+    return () => clearInterval(interval); // cleanup
+  }, []);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -145,7 +176,7 @@ export default function Analytics() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Main Analytics Chart */}
           <AnalyticsLineChart
-            data={monthlyData}
+            data={trendData}
             timeframe={selectedTimeframe}
             setTimeframe={setSelectedTimeframe}
           />
