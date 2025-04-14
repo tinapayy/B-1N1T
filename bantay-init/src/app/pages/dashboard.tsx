@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/sections/sidebar";
 import WeatherGauge from "@/components/sections/weather-gauge";
-import MapWidget from "@/components/sections/map-widget";
+// import MapWidget from "@/components/sections/map-widget";
 
 import { DailyForecast } from "@/components/sections/daily-forecast";
 import { HourlyForecast } from "@/components/sections/hourly-forecast";
@@ -56,7 +56,7 @@ export default function Dashboard() {
 
           {/* Right Column: Map */}
           <Card className="col-span-1 min-h-[400px] flex items-center justify-center text-gray-500 rounded-3xl shadow-lg">
-            <MapWidget />
+            {/* <MapWidget /> */}
           </Card>
         </div>
 
