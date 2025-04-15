@@ -39,7 +39,7 @@ export default function HeatAlertTable({
     "Extreme Caution",
     "Extreme Danger",
   ];
-  const dateOptions = ["Today", "This Week", "This Month", "Custom Range"];
+  const dateOptions = ["Today", "This Week", "This Month"];
 
   const [filteredAlerts, setFilteredAlerts] = useState<Alert[]>(alerts);
   const [sortField, setSortField] = useState<string | null>(null);
@@ -88,10 +88,6 @@ export default function HeatAlertTable({
 
     if (selectedAlertType !== "All Types") {
       filtered = filtered.filter((a) => a.type === selectedAlertType);
-    }
-
-    if (selectedDateRange !== "Custom Range") {
-      // Simplified placeholder
     }
 
     if (sortField) {
