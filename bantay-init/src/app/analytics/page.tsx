@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Bell, Menu, Search, MapPin } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import LatestReadingCard from "@/app/analytics/LatestReadingCard";
 import HeatAlertTable from "@/app/analytics/HeatAlertTable";
 import AnalyticsLineChart from "@/app/analytics/AnalyticsLineChart";
 import WeeklyBarChart from "@/app/analytics/WeeklyBarChart";
 import { useSidebar } from "@/components/providers/sidebar-provider";
 import { SuspenseCard } from "@/components/ui/suspense-card";
+import { MobileTopBar } from "@/components/sections/mobile-top-bar";
+import { LocationSearch } from "@/components/sections/location-search";
+import { NotificationDropdown } from "@/components/sections/notification-dropdown"; // Import the NotificationDropdown component
 
 // Sample data for the charts
 const monthlyData = [
@@ -97,6 +97,7 @@ export default function Analytics() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
+      <MobileTopBar />
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4 lg:p-6 lg:pt-4">
         {/* Location Search Card */}
@@ -107,35 +108,14 @@ export default function Analytics() {
           <Card className="bg-white rounded-3xl shadow-sm mb-4">
             <CardContent className="p-4">
               <div className="flex flex-wrap items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-[var(--orange-primary)]" />
-                  <span className="font-medium">{location}</span>
-                </div>
-                <div className="relative flex-1 max-w-md ml-auto">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="search"
-                    placeholder="Search city..."
-                    className="pl-10 w-full"
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        // In a real app, this would trigger a search
-                      }
-                    }}
+                <div className="flex-1">
+                  <LocationSearch
+                    initialLocation={location}
+                    onLocationChange={(newLocation) => setLocation(newLocation)}
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon">
-                    <Bell className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="md:hidden"
-                    onClick={() => setIsMobileMenuOpen(true)}
-                  >
-                    <Menu className="h-5 w-5" />
-                  </Button>
+                  <NotificationDropdown />
                 </div>
               </div>
             </CardContent>
