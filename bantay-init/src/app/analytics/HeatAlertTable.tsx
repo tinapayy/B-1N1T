@@ -47,6 +47,7 @@ export default function HeatAlertTable({
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null); // Track which dropdown is open
 
   // Mobile detection
   useEffect(() => {
@@ -58,7 +59,7 @@ export default function HeatAlertTable({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Click outside to hide filters
+  // Click outside to hide filters, but only for non-dropdown interactions
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -66,7 +67,15 @@ export default function HeatAlertTable({
         filterRef.current &&
         !filterRef.current.contains(event.target as Node)
       ) {
+        // Check if the click is within a DropdownMenuContent
+        const dropdownContent = document.querySelector(
+          "[data-radix-popper-content-wrapper]"
+        );
+        if (dropdownContent && dropdownContent.contains(event.target as Node)) {
+          return; // Don't close if clicking inside dropdown content
+        }
         setShowMobileFilters(false);
+        setOpenDropdown(null); // Close any open dropdown
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -112,12 +121,26 @@ export default function HeatAlertTable({
   };
 
   const getSortIcon = (field: string) => {
-    if (sortField !== field) return null;
-    return sortDirection === "asc" ? (
-      <ChevronUp className="h-4 w-4 inline ml-1" />
-    ) : (
-      <ChevronDown className="h-4 w-4 inline ml-1" />
-    );
+    if (sortField === field) {
+      return sortDirection === "asc" ? (
+        <ChevronUp className="h-4 w-4 inline ml-1" />
+      ) : (
+        <ChevronDown className="h-4 w-4 inline ml-1" />
+      );
+    }
+    // Show default ChevronDown when not sorted
+    return <ChevronDown className="h-4 w-4 inline ml-1 text-gray-400" />;
+  };
+
+  // Handle dropdown selection and close only the dropdown
+  const handleDropdownSelect = (
+    setter: (value: string) => void,
+    option: string,
+    dropdownId: string
+  ) => {
+    setter(option);
+    setOpenDropdown(null); // Close the dropdown
+    // Do not close showMobileFilters, keep filters visible
   };
 
   return (
@@ -158,14 +181,20 @@ export default function HeatAlertTable({
                 label: selectedAlertType,
                 setter: setSelectedAlertType,
                 options: alertTypeOptions,
+                id: "alertType",
               },
               {
                 label: selectedDateRange,
                 setter: setSelectedDateRange,
                 options: dateOptions,
+                id: "dateRange",
               },
-            ].map(({ label, setter, options }, i) => (
-              <DropdownMenu key={i}>
+            ].map(({ label, setter, options, id }, i) => (
+              <DropdownMenu
+                key={i}
+                open={openDropdown === id}
+                onOpenChange={(open) => setOpenDropdown(open ? id : null)}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
@@ -180,7 +209,7 @@ export default function HeatAlertTable({
                   {options.map((option) => (
                     <DropdownMenuItem
                       key={option}
-                      onClick={() => setter(option)}
+                      onSelect={() => handleDropdownSelect(setter, option, id)}
                     >
                       {option}
                     </DropdownMenuItem>
