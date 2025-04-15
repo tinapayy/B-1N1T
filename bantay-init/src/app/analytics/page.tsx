@@ -165,47 +165,57 @@ export default function Analytics() {
         </div>
 
         {/* Mobile Stats Cards - Only visible on small screens */}
+        {/* Mobile Stats Cards - Only visible on small screens */}
         <div className="grid grid-cols-3 gap-4 mt-4 sm:hidden">
           <SuspenseCard
-            height="h-[100px]"
+            height="h-[120px]"
             className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm"
           >
-            <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
-              <CardContent className="p-3">
+            <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
+              <CardContent className="p-3 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">48</div>
-                  <div className="text-xs mt-1">Monthly</div>
-                  <div className="text-xs">Alerts</div>
+                  <div className="text-xl font-bold">48</div>
+                  <div className="text-[10px] leading-tight mt-1 px-1">
+                    Monthly
+                    <br />
+                    Alerts
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </SuspenseCard>
 
           <SuspenseCard
-            height="h-[100px]"
+            height="h-[120px]"
             className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm"
           >
-            <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm">
-              <CardContent className="p-3">
+            <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm h-full">
+              <CardContent className="p-3 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">51°C</div>
-                  <div className="text-xs mt-1">Peak</div>
-                  <div className="text-xs">Heat</div>
+                  <div className="text-xl font-bold">51°C</div>
+                  <div className="text-[10px] leading-tight mt-1 px-1">
+                    Peak
+                    <br />
+                    Heat Index
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </SuspenseCard>
 
           <SuspenseCard
-            height="h-[100px]"
+            height="h-[120px]"
             className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm"
           >
-            <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
-              <CardContent className="p-3">
+            <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
+              <CardContent className="p-3 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">+2°C</div>
-                  <div className="text-xs mt-1">Change</div>
-                  <div className="text-xs">Since</div>
+                  <div className="text-xl font-bold">+2°C</div>
+                  <div className="text-[10px] leading-tight mt-1 px-1">
+                    Change
+                    <br />
+                    Since Last Month
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -220,12 +230,11 @@ export default function Analytics() {
               height="h-[120px]"
               className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm"
             >
-              <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
-                <CardContent className="p-4">
+              <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
+                <CardContent className="p-4 flex items-center justify-center h-full">
                   <div className="text-center">
-                    <div className="text-3xl font-bold">48</div>
-                    <div className="text-xs mt-1">Monthly</div>
-                    <div className="text-xs">Extreme Alerts</div>
+                    <div className="text-2xl sm:text-3xl font-bold">48</div>
+                    <div className="text-xs mt-1">Monthly Extreme Alerts</div>
                   </div>
                 </CardContent>
               </Card>
@@ -235,12 +244,13 @@ export default function Analytics() {
               height="h-[120px]"
               className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm"
             >
-              <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm">
-                <CardContent className="p-4">
+              <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm h-full">
+                <CardContent className="p-4 flex items-center justify-center h-full">
                   <div className="text-center">
-                    <div className="text-3xl font-bold">51°C</div>
-                    <div className="text-xs mt-1">Peak</div>
-                    <div className="text-xs">Heat Index</div>
+                    <div className="text-2xl sm:text-3xl font-bold">51°C</div>
+                    <div className="text-xs mt-1 px-1 sm:px-0">
+                      Peak Heat Index
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -250,12 +260,13 @@ export default function Analytics() {
               height="h-[120px]"
               className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm"
             >
-              <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
-                <CardContent className="p-4">
+              <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
+                <CardContent className="p-4 flex items-center justify-center h-full">
                   <div className="text-center">
-                    <div className="text-3xl font-bold">+2°C</div>
-                    <div className="text-xs mt-1">Change Since</div>
-                    <div className="text-xs">Last Month</div>
+                    <div className="text-2xl sm:text-3xl font-bold">+2°C</div>
+                    <div className="text-xs mt-1 px-1 sm:px-0">
+                      Change Since Last Month
+                    </div>
                   </div>
                 </CardContent>
               </Card>
