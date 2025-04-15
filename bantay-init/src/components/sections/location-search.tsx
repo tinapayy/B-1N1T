@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useRef, useEffect } from "react";
 import { MapPin, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -51,7 +50,6 @@ export function LocationSearch({
     }
   };
 
-  // Handle clicks outside to collapse
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -75,7 +73,7 @@ export function LocationSearch({
   }, [isSearching, initialLocation, searchValue]);
 
   return (
-    <div ref={containerRef} className="relative flex items-center">
+    <div ref={containerRef} className="relative flex items-center w-full">
       {isSearching ? (
         <div className="flex items-center w-full">
           <MapPin className="absolute left-3 z-10 h-5 w-5 text-[var(--orange-primary)]" />
@@ -100,12 +98,14 @@ export function LocationSearch({
         </div>
       ) : (
         <div
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center justify-between w-full cursor-pointer"
           onClick={handleSearchClick}
         >
-          <MapPin className="h-5 w-5 text-[var(--orange-primary)]" />
-          <span className="font-medium">{searchValue}</span>
-          <Search className="h-4 w-4 text-gray-400 ml-1" />
+          <div className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 text-[var(--orange-primary)]" />
+            <span className="font-medium">{searchValue}</span>
+          </div>
+          <Search className="h-4 w-4 text-[var(--dark-gray-1)]" />
         </div>
       )}
     </div>
