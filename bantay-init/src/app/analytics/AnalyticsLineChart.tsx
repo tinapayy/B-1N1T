@@ -139,17 +139,18 @@ export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
               />
               <YAxis axisLine={false} tickLine={false} domain={yDomain} />
               <ChartTooltip content={<ChartTooltipContent />} />
+
               <Line
                 type="monotone"
-                dataKey="temperature"
-                stroke="var(--color-temperature)"
+                dataKey="heatIndex"
+                stroke="var(--color-heatIndex)"
                 strokeWidth={2}
                 dot={false}
               />
               <Line
                 type="monotone"
-                dataKey="heatIndex"
-                stroke="var(--color-heatIndex)"
+                dataKey="temperature"
+                stroke="var(--color-temperature)"
                 strokeWidth={2}
                 dot={false}
               />
