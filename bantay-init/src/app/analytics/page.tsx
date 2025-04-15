@@ -165,7 +165,6 @@ export default function Analytics() {
         </div>
 
         {/* Mobile Stats Cards - Only visible on small screens */}
-        {/* Mobile Stats Cards - Only visible on small screens */}
         <div className="grid grid-cols-3 gap-4 mt-4 sm:hidden">
           <SuspenseCard
             height="h-[120px]"
