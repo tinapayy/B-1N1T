@@ -8,11 +8,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Menu, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import { useSidebar } from "@/components/providers/sidebar-provider";
 import { SuspenseCard } from "@/components/ui/suspense-card";
+import { MobileTopBar } from "@/components/sections/mobile-top-bar";
 
 // Define the FAQ item type
 interface FAQItem {
@@ -156,6 +157,9 @@ export default function FAQs() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
+      {/* Mobile Top Bar - Only visible on small screens */}
+      <MobileTopBar />
+
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4 lg:p-8">
         <div className="max-w-7xl mx-auto">
@@ -164,15 +168,6 @@ export default function FAQs() {
             <h1 className="text-3xl font-bold text-[var(--dark-gray-1)]">
               Frequently Asked Questions
             </h1>
-
-            {/* Mobile Menu Button */}
-            <button
-              type="button"
-              className="p-2 border border-gray-300 rounded-md md:hidden"
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Menu className="h-5 w-5" />
-            </button>
           </div>
 
           {/* Search Bar */}
@@ -199,9 +194,9 @@ export default function FAQs() {
           {/* Sensor Showcase */}
           <SuspenseCard
             height="min-h-[300px]"
-            className="bg-white rounded-3xl shadow-lg mb-8 overflow-hidden"
+            className="bg-white rounded-3xl shadow-md mb-8 overflow-hidden"
           >
-            <Card className="bg-white rounded-3xl shadow-lg mb-8 overflow-hidden">
+            <Card className="bg-white rounded-3xl shadow-md mb-8 overflow-hidden">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="p-6 flex flex-col justify-center">
                   <h2 className="text-2xl font-bold text-[var(--orange-primary)] mb-4">
@@ -247,8 +242,10 @@ export default function FAQs() {
                     </li>
                   </ul>
                 </div>
-                <div className="bg-gray-200 flex items-center justify-center">
-                  <div className="relative w-full h-full">
+                <div className="bg-gray-200 flex items-center justify-center m-0 p-0">
+                  <div className="relative w-full h-64 md:h-full">
+                    {" "}
+                    {/* Set a fixed height for mobile */}
                     <Image
                       src="/assets/b1n1t.png"
                       alt="BANTAY-1N1T Heat Sensor"
@@ -270,9 +267,9 @@ export default function FAQs() {
                 {/* FAQs Section */}
                 <SuspenseCard
                   height="min-h-[400px]"
-                  className="bg-white rounded-3xl shadow-lg order-1"
+                  className="bg-white rounded-3xl shadow-md order-1"
                 >
-                  <Card className="bg-white rounded-3xl shadow-lg order-1">
+                  <Card className="bg-white rounded-3xl shadow-md order-1">
                     <CardContent className="p-6">
                       {filteredFAQs.length > 0 ? (
                         <Accordion
@@ -318,9 +315,9 @@ export default function FAQs() {
                   height="min-h-[300px]"
                   hasHeader
                   headerTitle="Heat Safety Tips"
-                  className="bg-white rounded-3xl shadow-lg order-2"
+                  className="bg-white rounded-3xl shadow-md order-2"
                 >
-                  <Card className="bg-white rounded-3xl shadow-lg order-2">
+                  <Card className="bg-white rounded-3xl shadow-md order-2">
                     <CardHeader>
                       <CardTitle className="text-xl text-[var(--orange-primary)]">
                         Heat Safety Tips
@@ -397,9 +394,9 @@ export default function FAQs() {
                   height="min-h-[300px]"
                   hasHeader
                   headerTitle="Meet Our Team"
-                  className="bg-white rounded-3xl shadow-lg order-3"
+                  className="bg-white rounded-3xl shadow-md order-3"
                 >
-                  <Card className="bg-white rounded-3xl shadow-lg order-3">
+                  <Card className="bg-white rounded-3xl shadow-md order-3">
                     <CardHeader>
                       <CardTitle className="text-xl text-[var(--orange-primary)]">
                         Meet Our Team
@@ -407,33 +404,35 @@ export default function FAQs() {
                     </CardHeader>
                     <CardContent className="p-6 pt-0">
                       <p className="text-[var(--dark-gray-3)] mb-6">
-                        Our dedicated team of engineers, data scientists, and
-                        public health experts work together to develop and
-                        maintain the BANTAY-1N1T heat monitoring system.
+                        Our dedicated team of students work together to develop
+                        and maintain the BANTAY-1N1T heat monitoring system.
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {[1, 2, 3].map((member) => (
+                        {[
+                          { name: "Christian Salinas", role: "Lead Developer" },
+                          {
+                            name: "Kristina Celis",
+                            role: "Full-Stack Developer",
+                          },
+                          { name: "Sean Porras", role: "Project Engineer" },
+                        ].map((member, index) => (
                           <div
-                            key={member}
+                            key={index}
                             className="flex flex-col items-center"
                           >
                             <div className="relative w-32 h-32 mb-4 rounded-full overflow-hidden bg-gray-200">
                               <Image
-                                src={`/assets/team-member-${member}.png`}
-                                alt={`Team Member ${member}`}
+                                src={`/assets/team-member-${index + 1}.png`}
+                                alt={`Team Member ${member.name}`}
                                 fill
                                 className="object-cover"
                               />
                             </div>
                             <h3 className="font-medium text-[var(--dark-gray-1)]">
-                              Team Member {member}
+                              {member.name}
                             </h3>
                             <p className="text-sm text-[var(--medium-gray)] text-center">
-                              {member === 1
-                                ? "Lead Developer"
-                                : member === 2
-                                ? "Full-Stack Developer"
-                                : "Project Engineer"}
+                              {member.role}
                             </p>
                           </div>
                         ))}
@@ -451,9 +450,9 @@ export default function FAQs() {
                 height="min-h-[400px]"
                 hasHeader
                 headerTitle="Heat Index Warning Levels"
-                className="bg-white rounded-3xl shadow-lg"
+                className="bg-white rounded-3xl shadow-md"
               >
-                <Card className="bg-white rounded-3xl shadow-lg">
+                <Card className="bg-white rounded-3xl shadow-md">
                   <CardHeader>
                     <CardTitle className="text-center text-lg text-[var(--dark-gray-1)]">
                       Heat Index Warning Levels
@@ -488,9 +487,9 @@ export default function FAQs() {
                 height="min-h-[300px]"
                 hasHeader
                 headerTitle="Need More Help?"
-                className="bg-white rounded-3xl shadow-lg"
+                className="bg-white rounded-3xl shadow-md"
               >
-                <Card className="bg-white rounded-3xl shadow-lg">
+                <Card className="bg-white rounded-3xl shadow-md">
                   <CardHeader>
                     <CardTitle className="text-xl text-[var(--orange-primary)]">
                       Need More Help?
