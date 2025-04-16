@@ -1,8 +1,6 @@
 "use client";
 
-import type React from "react";
-
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
@@ -12,29 +10,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp, Edit, Trash2, Search } from "lucide-react";
 import {
-  ChevronDown,
-  ChevronUp,
-  Edit,
-  MoreHorizontal,
-  Trash2,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface Sensor {
   id: number;
@@ -46,25 +31,74 @@ interface Sensor {
   status: string;
 }
 
+interface Receiver {
+  id: number;
+  sensorName: string;
+  location: string;
+  receiverId: string;
+  connectedSensorIds: string[];
+  registerDate: string;
+  status: string;
+}
+
+type Device = Sensor | Receiver;
+
 interface AdminSensorTableProps {
-  sensors: Sensor[];
+  sensors: Device[];
   onDelete: (id: number) => void;
-  onEdit: (sensor: Sensor) => void;
+  onEdit: (sensor: Device) => void;
   deviceType: "sensor" | "receiver";
 }
 
 export function AdminSensorTable({
-  sensors,
+  sensors: propSensors,
   onDelete,
   onEdit,
   deviceType,
 }: AdminSensorTableProps) {
-  const [sortField, setSortField] = useState<keyof Sensor>("sensorName");
+  const [sortField, setSortField] = useState<keyof Device>("sensorName");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [viewSensorsOpen, setViewSensorsOpen] = useState(false);
+  const [selectedReceiver, setSelectedReceiver] = useState<Receiver | null>(
+    null
+  );
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
-  const handleSort = (field: keyof Sensor) => {
+  const mockReceivers: Receiver[] = [
+    {
+      id: 1,
+      sensorName: "Receiver 1",
+      location: "Lab A",
+      receiverId: "R-001",
+      connectedSensorIds: ["S-001", "S-002", "S-003"],
+      registerDate: "2023-01-01",
+      status: "online",
+    },
+    {
+      id: 2,
+      sensorName: "Receiver 2",
+      location: "Lab B",
+      receiverId: "R-002",
+      connectedSensorIds: ["S-004"],
+      registerDate: "2023-01-02",
+      status: "offline",
+    },
+    {
+      id: 3,
+      sensorName: "Receiver 3",
+      location: "Field",
+      receiverId: "R-003",
+      connectedSensorIds: [],
+      registerDate: "2023-01-03",
+      status: "pinged",
+    },
+  ];
+
+  const sensors = deviceType === "receiver" ? mockReceivers : propSensors;
+
+  const handleSort = (field: keyof Device) => {
     if (field === sortField) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -74,28 +108,49 @@ export function AdminSensorTable({
   };
 
   const sortedSensors = [...sensors].sort((a, b) => {
-    if (a[sortField] < b[sortField]) return sortDirection === "asc" ? -1 : 1;
-    if (a[sortField] > b[sortField]) return sortDirection === "asc" ? 1 : -1;
+    let aValue: string | number;
+    let bValue: string | number;
+
+    if (sortField === "receiverId" && deviceType === "receiver") {
+      aValue =
+        "connectedSensorIds" in a
+          ? (a as Receiver).connectedSensorIds.length
+          : 0;
+      bValue =
+        "connectedSensorIds" in b
+          ? (b as Receiver).connectedSensorIds.length
+          : 0;
+    } else if (sortField === "receiverId" && deviceType === "sensor") {
+      aValue = (a as Sensor).sensorId;
+      bValue = (b as Sensor).sensorId;
+    } else {
+      aValue = a[sortField];
+      bValue = b[sortField];
+    }
+
+    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
     return 0;
   });
 
   const confirmDelete = (id: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Stop event propagation
+    e.stopPropagation();
     setDeleteId(id);
     setShowDeleteDialog(true);
   };
 
   const handleDeleteConfirm = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Stop event propagation
+    e.stopPropagation();
     if (deleteId !== null) {
       onDelete(deleteId);
+      setDeleteId(null);
       setShowDeleteDialog(false);
     }
   };
 
-  const handleEdit = (sensor: Sensor, e: React.MouseEvent) => {
-    e.stopPropagation(); // Stop event propagation
-    onEdit(sensor);
+  const handleEdit = (device: Device, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit(device);
   };
 
   const getStatusColor = (status: string) => {
@@ -111,7 +166,11 @@ export function AdminSensorTable({
     }
   };
 
-  const SortIcon = ({ field }: { field: keyof Sensor }) => {
+  const capitalizeStatus = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  };
+
+  const SortIcon = ({ field }: { field: keyof Device }) => {
     if (field !== sortField)
       return <ChevronDown className="ml-1 h-4 w-4 opacity-50" />;
     return sortDirection === "asc" ? (
@@ -121,8 +180,19 @@ export function AdminSensorTable({
     );
   };
 
-  const handleDialogClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Stop event propagation
+  const isReceiver = (device: Device): device is Receiver => {
+    return "connectedSensorIds" in device;
+  };
+
+  const filteredSensors = (connectedSensorIds: string[]) => {
+    if (!searchQuery) return connectedSensorIds;
+    return connectedSensorIds.filter((sensorId) =>
+      sensorId.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  const handleContentClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
   };
 
   return (
@@ -130,11 +200,11 @@ export function AdminSensorTable({
       <div className="overflow-x-auto">
         <div className="h-[265px] overflow-y-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
               <TableRow>
                 <TableHead
-                  className="cursor-pointer"
                   onClick={() => handleSort("sensorName")}
+                  className="cursor-pointer whitespace-nowrap"
                 >
                   <div className="flex items-center">
                     {deviceType === "sensor" ? "Sensor" : "Receiver"} Name
@@ -142,8 +212,8 @@ export function AdminSensorTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer"
                   onClick={() => handleSort("location")}
+                  className="cursor-pointer whitespace-nowrap"
                 >
                   <div className="flex items-center">
                     Location
@@ -151,26 +221,26 @@ export function AdminSensorTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort("sensorId")}
+                  onClick={() => handleSort("receiverId")}
+                  className="cursor-pointer whitespace-nowrap"
                 >
                   <div className="flex items-center">
                     {deviceType === "sensor" ? "Sensor" : "Device"} ID
-                    <SortIcon field="sensorId" />
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort("receiverId")}
-                >
-                  <div className="flex items-center">
-                    {deviceType === "sensor" ? "Receiver" : "Connected To"} ID
                     <SortIcon field="receiverId" />
                   </div>
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer"
+                  onClick={() => handleSort("receiverId")}
+                  className="cursor-pointer whitespace-nowrap"
+                >
+                  <div className="flex items-center">
+                    Receiver ID
+                    <SortIcon field="receiverId" />
+                  </div>
+                </TableHead>
+                <TableHead
                   onClick={() => handleSort("registerDate")}
+                  className="cursor-pointer whitespace-nowrap"
                 >
                   <div className="flex items-center">
                     Register Date
@@ -178,72 +248,86 @@ export function AdminSensorTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="cursor-pointer"
                   onClick={() => handleSort("status")}
+                  className="cursor-pointer whitespace-nowrap"
                 >
                   <div className="flex items-center">
                     Status
                     <SortIcon field="status" />
                   </div>
                 </TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
+                <TableHead className="w-[80px] whitespace-nowrap">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedSensors.length > 0 ? (
-                sortedSensors.map((sensor) => (
+                sortedSensors.map((device) => (
                   <TableRow
-                    key={sensor.id}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    key={device.id}
+                    className="hover:bg-gray-50 cursor-pointer"
                   >
-                    <TableCell className="font-medium">
-                      {sensor.sensorName}
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {device.sensorName}
                     </TableCell>
-                    <TableCell>{sensor.location}</TableCell>
-                    <TableCell>{sensor.sensorId}</TableCell>
-                    <TableCell>{sensor.receiverId}</TableCell>
-                    <TableCell>{sensor.registerDate}</TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {device.location}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {deviceType === "sensor" ? (
+                        (device as Sensor).sensorId
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedReceiver(device as Receiver);
+                            setSearchQuery("");
+                            setViewSensorsOpen(true);
+                          }}
+                        >
+                          View Sensors (
+                          {(device as Receiver).connectedSensorIds.length})
+                        </Button>
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {device.receiverId}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {device.registerDate}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div className="flex items-center">
                         <div
                           className={`h-2.5 w-2.5 rounded-full ${getStatusColor(
-                            sensor.status
+                            device.status
                           )} mr-2`}
-                        ></div>
-                        {sensor.status}
+                        />
+                        {capitalizeStatus(device.status)}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          asChild
-                          onClick={(e) => e.stopPropagation()}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleEdit(device, e)}
+                          title="Edit"
                         >
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          onClick={(e) => e.stopPropagation()}
+                          <Edit className="h-4 w-4 text-gray-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => confirmDelete(device.id, e)}
+                          title="Delete"
                         >
-                          <DropdownMenuItem
-                            className="cursor-pointer"
-                            onClick={(e) => handleEdit(sensor, e)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Edit</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="cursor-pointer text-red-600 focus:text-red-600"
-                            onClick={(e) => confirmDelete(sensor.id, e)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Delete</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -259,28 +343,81 @@ export function AdminSensorTable({
         </div>
       </div>
 
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent onClick={handleDialogClick}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
+      {/* Delete Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent
+          className="sm:max-w-[425px]"
+          onClick={handleContentClick}
+        >
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
               This action cannot be undone. This will permanently delete the{" "}
-              {deviceType} and remove its data from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
+              {deviceType}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteDialog(false);
+              }}
+            >
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </Button>
+            <Button
               onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700"
             >
               Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Sensors Dialog */}
+      <Dialog open={viewSensorsOpen} onOpenChange={setViewSensorsOpen}>
+        <DialogContent
+          className="sm:max-w-[425px]"
+          onClick={handleContentClick}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              Connected Sensors for {selectedReceiver?.sensorName || "Receiver"}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedReceiver && (
+            <>
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search sensors..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto">
+                {filteredSensors(selectedReceiver.connectedSensorIds).length >
+                0 ? (
+                  filteredSensors(selectedReceiver.connectedSensorIds).map(
+                    (sensorId, index) => (
+                      <div key={index} className="p-3 border-b">
+                        <p className="text-sm">{sensorId}</p>
+                      </div>
+                    )
+                  )
+                ) : (
+                  <div className="py-4 text-center text-sm text-gray-500">
+                    No sensors found
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
