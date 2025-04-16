@@ -1,52 +1,56 @@
 "use client";
-import WeatherGauge from "@/components/sections/weather-gauge";
-import MapWidget from "@/components/sections/map-widget";
-import { DailyForecast } from "@/components/sections/daily-forecast";
-import { HourlyForecast } from "@/components/sections/hourly-forecast";
+
+import { useState } from "react";
+import WeatherGauge from "@/app/dashboard/weather-gauge";
+import { DailyForecast } from "@/app/dashboard/daily-forecast";
+import { HourlyForecast } from "@/app/dashboard/hourly-forecast";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Bell, Menu } from "lucide-react";
 import { useSidebar } from "@/components/providers/sidebar-provider";
 import { SuspenseCard } from "@/components/ui/suspense-card";
+import dynamic from "next/dynamic";
+import { LocationSearch } from "@/components/sections/location-search";
+import { NotificationDropdown } from "@/components/sections/notification-dropdown";
+import { MobileTopBar } from "@/components/sections/mobile-top-bar";
+
+// Dynamically import MapWidget with SSR disabled
+const MapWidget = dynamic(() => import("@/app/dashboard/map-widget"), {
+  ssr: false,
+});
 
 export default function Dashboard() {
   const { setIsMobileMenuOpen } = useSidebar();
+  const [location, setLocation] = useState("Miagao, Iloilo");
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
+      <MobileTopBar />
       {/* Main Content - Improved height handling */}
       <div className="flex-1 overflow-auto p-4 lg:p-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column: Weather Gauge + Search Bar */}
           <SuspenseCard
             height="min-h-[400px]"
-            className="bg-white rounded-3xl shadow-lg col-span-1"
+            className="bg-white rounded-3xl shadow-md col-span-1"
           >
-            <Card className="bg-white rounded-3xl shadow-lg col-span-1 min-h-[400px]">
-              <CardContent className="p-4 space-y-4">
+            <Card className="bg-white rounded-3xl shadow-md col-span-1 min-h-[400px]">
+              <CardContent className="lg:p-8 p-4 space-y-4">
                 {/* Search Bar & Icons inside Weather Gauge Section */}
                 <div className="flex items-center gap-4">
-                  <div className="w-full">
-                    <Input
-                      type="search"
-                      placeholder="Search City"
-                      className="w-full"
+                  <div className="flex-1">
+                    <LocationSearch
+                      initialLocation={location}
+                      onLocationChange={(newLocation) =>
+                        setLocation(newLocation)
+                      }
                     />
                   </div>
-                  <button className="p-2 border border-gray-300 rounded-md">
-                    <Bell className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    className="p-2 border border-gray-300 rounded-md md:hidden"
-                    onClick={() => setIsMobileMenuOpen(true)}
-                  >
-                    <Menu className="h-5 w-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <NotificationDropdown />
+                  </div>
                 </div>
 
                 {/* WeatherGauge now handles dynamic Firebase data internally */}
-                <WeatherGauge location="Miagao, Iloilo" />
+                <WeatherGauge location={location} />
               </CardContent>
             </Card>
           </SuspenseCard>
@@ -54,9 +58,9 @@ export default function Dashboard() {
           {/* Right Column: Map */}
           <SuspenseCard
             height="min-h-[400px]"
-            className="col-span-1 rounded-3xl shadow-lg"
+            className="col-span-1 rounded-3xl shadow-md"
           >
-            <Card className="col-span-1 min-h-[400px] flex items-center justify-center text-gray-500 rounded-3xl shadow-lg">
+            <Card className="col-span-1 min-h-[400px] flex items-center justify-center text-gray-500 rounded-3xl shadow-md">
               <MapWidget />
             </Card>
           </SuspenseCard>
@@ -67,9 +71,9 @@ export default function Dashboard() {
           {/* Daily Forecast Section */}
           <SuspenseCard
             height="min-h-[320px]"
-            className="col-span-1 bg-white rounded-3xl shadow-lg"
+            className="col-span-1 bg-white rounded-3xl shadow-md"
           >
-            <Card className="col-span-1 bg-white rounded-3xl shadow-lg min-h-[320px] max-h-[350px] overflow-auto">
+            <Card className="col-span-1 bg-white rounded-3xl shadow-md min-h-[320px] max-h-[350px] overflow-auto">
               <CardContent className="p-4 h-full">
                 <DailyForecast />
               </CardContent>
@@ -79,9 +83,9 @@ export default function Dashboard() {
           {/* Hourly Forecast Section */}
           <SuspenseCard
             height="min-h-[320px]"
-            className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-lg"
+            className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-md"
           >
-            <Card className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-lg min-h-[320px] max-h-[350px] overflow-auto">
+            <Card className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-md min-h-[320px] max-h-[350px] overflow-auto">
               <CardContent className="p-4 h-full">
                 <HourlyForecast />
               </CardContent>
