@@ -11,7 +11,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-col min-h-screen">
         {/* Mobile Top Bar - Visible only on mobile */}
         <MobileTopBar />
-        <div className="flex">
+        <div className="flex flex-1">
           <Sidebar />
           <main className="flex-1 md:ml-20 lg:ml-64">{children}</main>
         </div>

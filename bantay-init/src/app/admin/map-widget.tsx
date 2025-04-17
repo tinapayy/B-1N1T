@@ -140,8 +140,8 @@ export function MapWidget({ onLocationSelect }: MapWidgetProps) {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             type="text"
-            placeholder="Search for a location..."
-            className="pl-10 pr-20"
+            placeholder="Search location..."
+            className="pl-10 pr-10"
             value={searchQuery}
             onChange={handleSearchInputChange}
             onKeyDown={handleKeyDown}
