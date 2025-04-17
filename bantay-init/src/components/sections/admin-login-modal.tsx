@@ -39,17 +39,12 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
     setIsLoading(true);
 
     try {
-      const success = await login(username, password);
-      if (success) {
-        setIsLoading(false);
-        onOpenChange(false);
-        router.push("/admin");
-      } else {
-        setError("Invalid username or password");
-        setIsLoading(false);
-      }
+      await login({ username, password }); // Updated to match the expected signature
+      setIsLoading(false);
+      onOpenChange(false);
+      router.push("/admin");
     } catch (error) {
-      setError("An error occurred during login");
+      setError("Invalid username or password");
       setIsLoading(false);
     }
   };
@@ -60,10 +55,13 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]" onClick={handleContentClick}>
+      <DialogContent
+        className="w-[90vw] max-w-[425px] rounded-lg"
+        onClick={handleContentClick}
+      >
         <DialogHeader>
-          <DialogTitle>Admin Login</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">Admin Login</DialogTitle>
+          <DialogDescription className="text-sm sm:text-base">
             Enter your credentials to access the admin dashboard.
           </DialogDescription>
         </DialogHeader>
@@ -73,12 +71,14 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
           )}
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username" className="text-sm sm:text-base">
+                Username
+              </Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                 <Input
                   id="username"
-                  className="pl-10"
+                  className="pl-10 min-h-[44px] text-sm sm:text-base"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your username"
@@ -87,13 +87,15 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm sm:text-base">
+                Password
+              </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                 <Input
                   id="password"
                   type="password"
-                  className="pl-10"
+                  className="pl-10 min-h-[44px] text-sm sm:text-base"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
@@ -102,7 +104,7 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button
               type="button"
               variant="outline"
@@ -110,10 +112,15 @@ export function AdminLoginModal({ open, onOpenChange }: AdminLoginModalProps) {
                 e.stopPropagation();
                 onOpenChange(false);
               }}
+              className="w-full sm:w-auto min-h-[44px] text-sm sm:text-base"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full sm:w-auto min-h-[44px] text-sm sm:text-base"
+            >
               {isLoading ? "Logging in..." : "Login"}
             </Button>
           </DialogFooter>
