@@ -182,9 +182,9 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex-1 overflow-auto p-4">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-[var(--dark-gray-1)] p-4 rounded-lg">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
         <div className="flex w-full md:w-auto gap-2">
           <div className="relative flex-1 md:w-64">
@@ -214,6 +214,7 @@ export default function AdminDashboard() {
         defaultValue="sensors"
         value={deviceTab}
         onValueChange={handleTabChange}
+        className="mt-6"
       >
         <TabsList className="mb-4">
           <TabsTrigger value="sensors">Sensors</TabsTrigger>
@@ -260,15 +261,15 @@ export default function AdminDashboard() {
       </Tabs>
 
       {/* Add Form and Map Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Add Form Section - Always visible */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        {/* Add Form Section */}
         <SuspenseCard
-          height="min-h-[500px]"
+          height="min-h-[400px] lg:min-h-[500px]"
           className="bg-white rounded-xl shadow-sm"
         >
           <Card className="bg-white rounded-xl shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-center mb-4">
+            <CardContent className="p-4 lg:p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <h2 className="text-xl font-semibold">
                   {editingDevice ? "Edit" : "Add"}{" "}
                   {formType === "sensor" ? "Sensor" : "Receiver"}
@@ -279,7 +280,7 @@ export default function AdminDashboard() {
                     setFormType(value as "sensor" | "receiver")
                   }
                 >
-                  <SelectTrigger className="w-[120px]">
+                  <SelectTrigger className="w-full sm:w-[120px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -310,11 +311,11 @@ export default function AdminDashboard() {
 
         {/* Map Widget */}
         <SuspenseCard
-          height="h-[500px]"
+          height="h-[400px] lg:h-[500px]"
           className="bg-white rounded-xl shadow-sm"
         >
           <Card className="bg-white rounded-xl shadow-sm">
-            <CardContent className="p-4 h-[500px]">
+            <CardContent className="p-4 h-[400px] lg:h-[500px]">
               <MapWidget onLocationSelect={handleLocationSelect} />
             </CardContent>
           </Card>

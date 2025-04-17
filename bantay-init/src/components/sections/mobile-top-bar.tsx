@@ -9,7 +9,7 @@ export function MobileTopBar() {
   const { setIsMobileMenuOpen } = useSidebar();
 
   return (
-    <div className="flex items-center justify-between p-3 bg-[var(--orange-primary)] text-white md:hidden">
+    <div className="sticky top-0 z-50 flex items-center justify-between p-3 bg-[var(--orange-primary)] text-white md:hidden">
       <Link href="/dashboard">
         <div className="relative w-24 h-8">
           <Image
