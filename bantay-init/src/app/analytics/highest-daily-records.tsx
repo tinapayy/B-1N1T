@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function LatestReadingCard({ latest }: { latest: any }) {
+export default function HighestDailyRecords({ latest }: { latest: any }) {
   return (
     <Card className="col-span-1 bg-white rounded-3xl shadow-sm flex flex-col">
       <CardHeader className="px-4 sm:px-6 py-4">

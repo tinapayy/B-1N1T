@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LogOut, Search } from "lucide-react";
-import { AdminSensorTable } from "@/app/admin/admin-devices-table";
+import { AdminDevicesTable } from "@/app/admin/admin-devices-table";
 import { AddSensorForm } from "@/app/admin/add-sensor-form";
 import { AddReceiverForm } from "@/app/admin/add-receiver-form";
 import { MapWidget } from "@/app/admin/map-widget";
@@ -301,7 +301,7 @@ export default function AdminDashboard() {
           >
             <Card className="bg-white rounded-xl shadow-sm">
               <CardContent className="p-0 overflow-x-auto">
-                <AdminSensorTable
+                <AdminDevicesTable
                   sensors={filteredSensors}
                   onDelete={handleDeleteDevice}
                   onEdit={handleEditDevice}
@@ -320,7 +320,7 @@ export default function AdminDashboard() {
           >
             <Card className="bg-white rounded-xl shadow-sm">
               <CardContent className="p-0 overflow-x-auto">
-                <AdminSensorTable
+                <AdminDevicesTable
                   sensors={filteredReceivers}
                   onDelete={handleDeleteDevice}
                   onEdit={handleEditDevice}

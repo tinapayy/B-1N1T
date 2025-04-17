@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import LatestReadingCard from "@/app/analytics/highest-daily-records";
+import HighestDailyRecords from "@/app/analytics/highest-daily-records";
 import HeatAlertTable from "@/app/analytics/heat-alerts-table";
 import AnalyticsLineChart from "@/app/analytics/analytics-line-chart";
 import WeeklyBarChart from "@/app/analytics/weekly-bar-chart";
@@ -136,7 +136,7 @@ export default function Analytics() {
           height="min-h-[300px]"
           className="col-span-1 bg-white rounded-3xl shadow-sm"
         >
-          <LatestReadingCard latest={latestReading} />
+          <HighestDailyRecords latest={latestReading} />
         </SuspenseCard>
       </div>
 
