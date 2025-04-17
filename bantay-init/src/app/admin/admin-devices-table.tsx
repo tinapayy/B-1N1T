@@ -43,19 +43,19 @@ interface Receiver {
 
 type Device = Sensor | Receiver;
 
-interface AdminSensorTableProps {
+interface AdminDevicesTableProps {
   sensors: Device[];
   onDelete: (id: number) => void;
   onEdit: (sensor: Device) => void;
   deviceType: "sensor" | "receiver";
 }
 
-export function AdminSensorTable({
+export function AdminDevicesTable({
   sensors: propSensors,
   onDelete,
   onEdit,
   deviceType,
-}: AdminSensorTableProps) {
+}: AdminDevicesTableProps) {
   const [sortField, setSortField] = useState<keyof Device>("sensorName");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [deleteId, setDeleteId] = useState<number | null>(null);
