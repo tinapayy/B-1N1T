@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import LatestReadingCard from "@/app/analytics/LatestReadingCard";
-import HeatAlertTable from "@/app/analytics/HeatAlertTable";
-import AnalyticsLineChart from "@/app/analytics/AnalyticsLineChart";
-import WeeklyBarChart from "@/app/analytics/WeeklyBarChart";
+import LatestReadingCard from "@/app/analytics/highest-daily-records";
+import HeatAlertTable from "@/app/analytics/heat-alerts-table";
+import AnalyticsLineChart from "@/app/analytics/analytics-line-chart";
+import WeeklyBarChart from "@/app/analytics/weekly-bar-chart";
 import { useSidebar } from "@/components/providers/sidebar-provider";
 import { SuspenseCard } from "@/components/ui/suspense-card";
 import { LocationSearch } from "@/components/sections/location-search";

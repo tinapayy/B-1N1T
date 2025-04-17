@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LogOut, Search } from "lucide-react";
-import { AdminSensorTable } from "@/app/admin/admin-sensor-table";
+import { AdminSensorTable } from "@/app/admin/admin-devices-table";
 import { AddSensorForm } from "@/app/admin/add-sensor-form";
 import { AddReceiverForm } from "@/app/admin/add-receiver-form";
 import { MapWidget } from "@/app/admin/map-widget";
@@ -284,7 +284,7 @@ export default function AdminDashboard() {
         onValueChange={handleTabChange}
         className="mt-6"
       >
-        <TabsList className="mb-4 w-full justify-start overflow-x-auto">
+        <TabsList className="mb-4 justify-start overflow-x-auto">
           <TabsTrigger value="sensors" className="flex-shrink-0">
             Sensors
           </TabsTrigger>
