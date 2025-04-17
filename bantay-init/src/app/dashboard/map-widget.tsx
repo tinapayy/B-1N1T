@@ -212,7 +212,7 @@ const MapWidget = () => {
       {/* Sensor Icon in Lower Right */}
       <button
         onClick={() => setShowSubscribedList((prev) => !prev)}
-        className="absolute bottom-4 right-4 bg-[var(--orange-primary)] text-white p-2 rounded-full shadow-lg z-[1000] hover:bg-[var(--dark-gray-1)] transition-colors"
+        className="absolute bottom-4 right-4 bg-[var(--orange-primary)] text-white p-2 rounded-full shadow-lg z-[10] hover:bg-[var(--dark-gray-1)] transition-colors"
       >
         <Server className="w-5 h-5" />
       </button>
