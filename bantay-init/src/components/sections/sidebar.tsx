@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -24,6 +24,16 @@ import { useTheme } from "next-themes";
 import { useSidebar } from "@/components/providers/sidebar-provider";
 import { useAuth } from "@/components/providers/auth-provider";
 import useMedia from "use-media";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -48,6 +58,7 @@ export function Sidebar() {
   } = useSidebar();
 
   const isMobile = useMedia({ maxWidth: 767 });
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   useEffect(() => {
     if (isAdminModalOpen || isReportModalOpen) {
@@ -80,6 +91,7 @@ export function Sidebar() {
 
   const handleLogout = () => {
     logout();
+    setIsLogoutDialogOpen(false);
     setDropdownOpen(false);
   };
 
@@ -188,13 +200,43 @@ export function Sidebar() {
                   </DropdownMenu.Item>
                   <DropdownMenu.Separator className="my-1 h-px bg-gray-200" />
                   {user ? (
-                    <DropdownMenu.Item
-                      className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
-                      onClick={handleLogout}
+                    <Dialog
+                      open={isLogoutDialogOpen}
+                      onOpenChange={setIsLogoutDialogOpen}
                     >
-                      <LogOut className="w-4 h-4" />
-                      Logout
-                    </DropdownMenu.Item>
+                      <DialogTrigger asChild>
+                        <DropdownMenu.Item
+                          className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
+                          onSelect={(e) => e.preventDefault()}
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </DropdownMenu.Item>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>
+                            Are you sure you want to logout?
+                          </DialogTitle>
+                          <DialogDescription>
+                            You will be signed out of your account and
+                            redirected to the login page.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button
+                            className="mt-2"
+                            variant="outline"
+                            onClick={() => setIsLogoutDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button variant="destructive" onClick={handleLogout}>
+                            Logout
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   ) : (
                     <DropdownMenu.Item
                       className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
@@ -317,13 +359,42 @@ export function Sidebar() {
                   </DropdownMenu.Item>
                   <DropdownMenu.Separator className="my-1 h-px bg-gray-200" />
                   {user ? (
-                    <DropdownMenu.Item
-                      className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
-                      onClick={handleLogout}
+                    <Dialog
+                      open={isLogoutDialogOpen}
+                      onOpenChange={setIsLogoutDialogOpen}
                     >
-                      <LogOut className="w-4 h-4" />
-                      Logout
-                    </DropdownMenu.Item>
+                      <DialogTrigger asChild>
+                        <DropdownMenu.Item
+                          className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
+                          onSelect={(e) => e.preventDefault()}
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </DropdownMenu.Item>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>
+                            Are you sure you want to logout?
+                          </DialogTitle>
+                          <DialogDescription>
+                            You will be signed out of your account and
+                            redirected to the login page.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsLogoutDialogOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button variant="destructive" onClick={handleLogout}>
+                            Logout
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   ) : (
                     <DropdownMenu.Item
                       className="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm text-black hover:bg-gray-100"
