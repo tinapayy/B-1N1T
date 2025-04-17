@@ -172,11 +172,11 @@ export function AdminSensorTable({
 
   const SortIcon = ({ field }: { field: keyof Device }) => {
     if (field !== sortField)
-      return <ChevronDown className="ml-1 h-4 w-4 opacity-50" />;
+      return <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4 opacity-50" />;
     return sortDirection === "asc" ? (
-      <ChevronUp className="ml-1 h-4 w-4" />
+      <ChevronUp className="ml-1 h-3 w-3 md:h-4 md:w-4" />
     ) : (
-      <ChevronDown className="ml-1 h-4 w-4" />
+      <ChevronDown className="ml-1 h-3 w-3 md:h-4 md:w-4" />
     );
   };
 
@@ -197,14 +197,15 @@ export function AdminSensorTable({
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <div className="h-[265px] overflow-y-auto">
+      {/* Table Layout for lg and above */}
+      <div className="hidden lg:block overflow-x-auto shadow-sm">
+        <div className="min-w-[700px] h-[265px] overflow-y-auto">
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
               <TableRow>
                 <TableHead
                   onClick={() => handleSort("sensorName")}
-                  className="cursor-pointer whitespace-nowrap"
+                  className="cursor-pointer whitespace-nowrap text-sm font-semibold"
                 >
                   <div className="flex items-center">
                     {deviceType === "sensor" ? "Sensor" : "Receiver"} Name
@@ -213,7 +214,7 @@ export function AdminSensorTable({
                 </TableHead>
                 <TableHead
                   onClick={() => handleSort("location")}
-                  className="cursor-pointer whitespace-nowrap"
+                  className="cursor-pointer whitespace-nowrap text-sm font-semibold"
                 >
                   <div className="flex items-center">
                     Location
@@ -222,7 +223,7 @@ export function AdminSensorTable({
                 </TableHead>
                 <TableHead
                   onClick={() => handleSort("receiverId")}
-                  className="cursor-pointer whitespace-nowrap"
+                  className="cursor-pointer whitespace-nowrap text-sm font-semibold"
                 >
                   <div className="flex items-center">
                     {deviceType === "sensor" ? "Sensor" : "Device"} ID
@@ -231,7 +232,7 @@ export function AdminSensorTable({
                 </TableHead>
                 <TableHead
                   onClick={() => handleSort("receiverId")}
-                  className="cursor-pointer whitespace-nowrap"
+                  className="cursor-pointer whitespace-nowrap text-sm font-semibold"
                 >
                   <div className="flex items-center">
                     Receiver ID
@@ -240,7 +241,7 @@ export function AdminSensorTable({
                 </TableHead>
                 <TableHead
                   onClick={() => handleSort("registerDate")}
-                  className="cursor-pointer whitespace-nowrap"
+                  className="cursor-pointer whitespace-nowrap text-sm font-semibold"
                 >
                   <div className="flex items-center">
                     Register Date
@@ -249,14 +250,14 @@ export function AdminSensorTable({
                 </TableHead>
                 <TableHead
                   onClick={() => handleSort("status")}
-                  className="cursor-pointer whitespace-nowrap"
+                  className="cursor-pointer whitespace-nowrap text-sm font-semibold"
                 >
                   <div className="flex items-center">
                     Status
                     <SortIcon field="status" />
                   </div>
                 </TableHead>
-                <TableHead className="w-[80px] whitespace-nowrap">
+                <TableHead className="w-[80px] whitespace-nowrap text-sm font-semibold">
                   Actions
                 </TableHead>
               </TableRow>
@@ -268,13 +269,13 @@ export function AdminSensorTable({
                     key={device.id}
                     className="hover:bg-gray-50 cursor-pointer"
                   >
-                    <TableCell className="font-medium whitespace-nowrap">
+                    <TableCell className="font-medium whitespace-nowrap text-sm">
                       {device.sensorName}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap text-sm">
                       {device.location}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap text-sm">
                       {deviceType === "sensor" ? (
                         (device as Sensor).sensorId
                       ) : (
@@ -287,19 +288,20 @@ export function AdminSensorTable({
                             setSearchQuery("");
                             setViewSensorsOpen(true);
                           }}
+                          className="text-xs"
                         >
                           View Sensors (
                           {(device as Receiver).connectedSensorIds.length})
                         </Button>
                       )}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap text-sm">
                       {device.receiverId}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap text-sm">
                       {device.registerDate}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">
+                    <TableCell className="whitespace-nowrap text-sm">
                       <div className="flex items-center">
                         <div
                           className={`h-2.5 w-2.5 rounded-full ${getStatusColor(
@@ -333,7 +335,7 @@ export function AdminSensorTable({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center">
+                  <TableCell colSpan={7} className="text-center text-sm">
                     No results
                   </TableCell>
                 </TableRow>
@@ -343,32 +345,122 @@ export function AdminSensorTable({
         </div>
       </div>
 
+      {/* Card Layout for md and sm */}
+      <div className="block lg:hidden h-[265px] overflow-y-auto space-y-4 p-2">
+        {sortedSensors.length > 0 ? (
+          sortedSensors.map((device) => (
+            <div
+              key={device.id}
+              className="border rounded-lg p-3 shadow-sm bg-white hover:bg-gray-50 cursor-pointer"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="font-medium text-sm">{device.sensorName}</h3>
+                    <div
+                      className={`h-2 w-2 rounded-full ${getStatusColor(
+                        device.status
+                      )}`}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {capitalizeStatus(device.status)}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => handleEdit(device, e)}
+                    title="Edit"
+                  >
+                    <Edit className="h-4 w-4 text-gray-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => confirmDelete(device.id, e)}
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-600" />
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="font-semibold">Location:</span>{" "}
+                  {device.location}
+                </div>
+                <div>
+                  <span className="font-semibold">
+                    {deviceType === "sensor" ? "Sensor" : "Device"} ID:
+                  </span>{" "}
+                  {deviceType === "sensor" ? (
+                    (device as Sensor).sensorId
+                  ) : (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedReceiver(device as Receiver);
+                        setSearchQuery("");
+                        setViewSensorsOpen(true);
+                      }}
+                      className="p-0 h-auto text-xs text-blue-600 hover:underline"
+                    >
+                      View Sensors (
+                      {(device as Receiver).connectedSensorIds.length})
+                    </Button>
+                  )}
+                </div>
+                <div>
+                  <span className="font-semibold">Receiver ID:</span>{" "}
+                  {device.receiverId}
+                </div>
+                <div>
+                  <span className="font-semibold">Register Date:</span>{" "}
+                  {device.registerDate}
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center text-sm text-gray-500 py-4">
+            No results
+          </div>
+        )}
+      </div>
+
       {/* Delete Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent
-          className="sm:max-w-[425px]"
+          className="w-[90vw] max-w-[400px] rounded-lg"
           onClick={handleContentClick}
         >
           <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base md:text-lg">
+              Are you sure?
+            </DialogTitle>
+            <DialogDescription className="text-sm md:text-base">
               This action cannot be undone. This will permanently delete the{" "}
               {deviceType}.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowDeleteDialog(false);
               }}
+              className="w-full sm:w-auto text-sm"
             >
               Cancel
             </Button>
             <Button
               onClick={handleDeleteConfirm}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-red-600 hover:bg-red-700 w-full sm:w-auto text-sm"
             >
               Delete
             </Button>
@@ -379,11 +471,11 @@ export function AdminSensorTable({
       {/* View Sensors Dialog */}
       <Dialog open={viewSensorsOpen} onOpenChange={setViewSensorsOpen}>
         <DialogContent
-          className="sm:max-w-[425px]"
+          className="w-[90vw] max-w-[400px] rounded-lg"
           onClick={handleContentClick}
         >
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="text-base md:text-lg">
               Connected Sensors for {selectedReceiver?.sensorName || "Receiver"}
             </DialogTitle>
           </DialogHeader>
@@ -395,21 +487,21 @@ export function AdminSensorTable({
                   placeholder="Search sensors..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 text-sm"
                 />
               </div>
-              <div className="max-h-[60vh] overflow-y-auto">
+              <div className="max-h-[50vh] overflow-y-auto">
                 {filteredSensors(selectedReceiver.connectedSensorIds).length >
                 0 ? (
                   filteredSensors(selectedReceiver.connectedSensorIds).map(
                     (sensorId, index) => (
-                      <div key={index} className="p-3 border-b">
-                        <p className="text-sm">{sensorId}</p>
+                      <div key={index} className="p-2 md:p-3 border-b">
+                        <p className="text-xs md:text-sm">{sensorId}</p>
                       </div>
                     )
                   )
                 ) : (
-                  <div className="py-4 text-center text-sm text-gray-500">
+                  <div className="py-3 md:py-4 text-center text-xs md:text-sm text-gray-500">
                     No sensors found
                   </div>
                 )}
