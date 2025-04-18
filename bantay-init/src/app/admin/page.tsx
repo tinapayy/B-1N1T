@@ -46,7 +46,7 @@ const initialSensors = [
     id: 2,
     sensorName: "ILO-02",
     location: "Jaro Fire Station, Iloilo, Jaro",
-    sensorId: "S-001",
+    sensorId: "S-002",
     receiverId: "R-002",
     registerDate: "12.09.2019",
     status: "Pinged",
@@ -55,7 +55,7 @@ const initialSensors = [
     id: 3,
     sensorName: "MNL-04",
     location: "Poblacion Makati, Metro Manila",
-    sensorId: "S-001",
+    sensorId: "S-003",
     receiverId: "R-001",
     registerDate: "12.09.2019",
     status: "Offline",
@@ -70,6 +70,7 @@ const initialReceivers = [
     location: "Miagao Municipal, Iloilo",
     sensorId: "S-001",
     receiverId: "R-001",
+    connectedSensorIds: ["S-001", "S-002", "S-003"],
     registerDate: "12.09.2019",
     status: "Online",
   },
@@ -79,6 +80,7 @@ const initialReceivers = [
     location: "Jaro Fire Station, Iloilo, Jaro",
     sensorId: "S-002",
     receiverId: "R-002",
+    connectedSensorIds: ["S-004"],
     registerDate: "12.09.2019",
     status: "Offline",
   },
@@ -89,7 +91,7 @@ export default function AdminDashboard() {
   const pathname = usePathname();
   const { setIsMobileMenuOpen } = useSidebar();
   const { user, logout, isAdmin, isLoading: authLoading } = useAuth();
-  const [sensors, setSensors] = useState(initialSensors);
+  const [sensors, setSensors] = useState(initialSensors); // Initialize as array
   const [receivers, setReceivers] = useState(initialReceivers);
   const [searchQuery, setSearchQuery] = useState("");
   const [formType, setFormType] = useState<"sensor" | "receiver">("sensor");
@@ -232,7 +234,7 @@ export default function AdminDashboard() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="search"
-              placeholder="Search Location"
+              placeholder="Search Device"
               className="pl-10 w-full text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -282,7 +284,7 @@ export default function AdminDashboard() {
         defaultValue="sensors"
         value={deviceTab}
         onValueChange={handleTabChange}
-        className="mt-6"
+        className="mt-2"
       >
         <TabsList className="mb-4 justify-start overflow-x-auto">
           <TabsTrigger value="sensors" className="flex-shrink-0">
@@ -365,6 +367,7 @@ export default function AdminDashboard() {
                   selectedLocation={selectedLocation}
                   editingDevice={editingDevice}
                   onCancel={() => setEditingDevice(null)}
+                  existingSensors={sensors} // Pass sensors state
                 />
               ) : (
                 <AddReceiverForm
@@ -372,6 +375,7 @@ export default function AdminDashboard() {
                   selectedLocation={selectedLocation}
                   editingDevice={editingDevice}
                   onCancel={() => setEditingDevice(null)}
+                  existingReceivers={receivers} // Already passing receivers
                 />
               )}
             </CardContent>
