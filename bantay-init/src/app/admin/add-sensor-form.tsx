@@ -1,11 +1,22 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+interface Sensor {
+  id: number;
+  sensorName: string;
+  location: string;
+  sensorId: string;
+  receiverId: string;
+  registerDate: string;
+  status: string;
+  longitude?: string;
+  latitude?: string;
+}
 
 interface AddSensorFormProps {
   onAdd: (sensor: any) => void;
@@ -16,6 +27,7 @@ interface AddSensorFormProps {
   } | null;
   editingDevice?: any;
   onCancel: () => void;
+  existingSensors?: Sensor[]; // Made optional to handle undefined
 }
 
 export function AddSensorForm({
@@ -23,6 +35,7 @@ export function AddSensorForm({
   selectedLocation,
   editingDevice,
   onCancel,
+  existingSensors = [], // Default to empty array
 }: AddSensorFormProps) {
   const [formData, setFormData] = useState({
     sensorName: "",
@@ -33,6 +46,24 @@ export function AddSensorForm({
     latitude: "",
     location: "",
   });
+
+  // Generate the next sensorId in the format S-###
+  useEffect(() => {
+    if (!editingDevice) {
+      // Only auto-generate if not editing an existing sensor
+      const existingIds = existingSensors
+        .map((sensor) => {
+          const match = sensor.sensorId.match(/^S-(\d{3})$/);
+          return match ? parseInt(match[1], 10) : 0;
+        })
+        .filter((num) => !isNaN(num));
+
+      const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+      const nextId = maxId + 1;
+      const formattedId = `S-${nextId.toString().padStart(3, "0")}`; // e.g., S-001, S-002
+      setFormData((prev) => ({ ...prev, sensorId: formattedId }));
+    }
+  }, [existingSensors, editingDevice]);
 
   // Update form when editing device is set
   useEffect(() => {
@@ -125,8 +156,8 @@ export function AddSensorForm({
             name="sensorId"
             placeholder="S-001"
             value={formData.sensorId}
-            onChange={handleChange}
-            required
+            readOnly // Make the input read-only since it's auto-generated
+            className="bg-gray-100 cursor-not-allowed" // Style to indicate it's disabled
           />
         </div>
 
@@ -135,7 +166,7 @@ export function AddSensorForm({
           <Input
             id="receiverName"
             name="receiverName"
-            placeholder="BINIT-01"
+            placeholder="RCV-01"
             value={formData.receiverName}
             onChange={handleChange}
             required
@@ -159,7 +190,7 @@ export function AddSensorForm({
           <Input
             id="longitude"
             name="longitude"
-            placeholder="38.8951"
+            placeholder="e.g. 38.8951"
             value={formData.longitude}
             onChange={handleChange}
             required
@@ -171,7 +202,7 @@ export function AddSensorForm({
           <Input
             id="latitude"
             name="latitude"
-            placeholder="-77.0364"
+            placeholder="e.g. -77.0364"
             value={formData.latitude}
             onChange={handleChange}
             required

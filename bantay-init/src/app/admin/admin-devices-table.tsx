@@ -36,7 +36,7 @@ interface Receiver {
   sensorName: string;
   location: string;
   receiverId: string;
-  connectedSensorIds: string[];
+  connectedSensorIds?: string[]; // Optional since not all receivers may have this
   registerDate: string;
   status: string;
 }
@@ -51,7 +51,7 @@ interface AdminDevicesTableProps {
 }
 
 export function AdminDevicesTable({
-  sensors: propSensors,
+  sensors,
   onDelete,
   onEdit,
   deviceType,
@@ -65,38 +65,6 @@ export function AdminDevicesTable({
     null
   );
   const [searchQuery, setSearchQuery] = useState<string>("");
-
-  const mockReceivers: Receiver[] = [
-    {
-      id: 1,
-      sensorName: "Receiver 1",
-      location: "Lab A",
-      receiverId: "R-001",
-      connectedSensorIds: ["S-001", "S-002", "S-003"],
-      registerDate: "2023-01-01",
-      status: "online",
-    },
-    {
-      id: 2,
-      sensorName: "Receiver 2",
-      location: "Lab B",
-      receiverId: "R-002",
-      connectedSensorIds: ["S-004"],
-      registerDate: "2023-01-02",
-      status: "offline",
-    },
-    {
-      id: 3,
-      sensorName: "Receiver 3",
-      location: "Field",
-      receiverId: "R-003",
-      connectedSensorIds: [],
-      registerDate: "2023-01-03",
-      status: "pinged",
-    },
-  ];
-
-  const sensors = deviceType === "receiver" ? mockReceivers : propSensors;
 
   const handleSort = (field: keyof Device) => {
     if (field === sortField) {
@@ -114,18 +82,18 @@ export function AdminDevicesTable({
     if (sortField === "receiverId" && deviceType === "receiver") {
       aValue =
         "connectedSensorIds" in a
-          ? (a as Receiver).connectedSensorIds.length
+          ? (a as Receiver).connectedSensorIds?.length ?? 0
           : 0;
       bValue =
         "connectedSensorIds" in b
-          ? (b as Receiver).connectedSensorIds.length
+          ? (b as Receiver).connectedSensorIds?.length ?? 0
           : 0;
     } else if (sortField === "receiverId" && deviceType === "sensor") {
       aValue = (a as Sensor).sensorId;
       bValue = (b as Sensor).sensorId;
     } else {
-      aValue = a[sortField];
-      bValue = b[sortField];
+      aValue = a[sortField] as string;
+      bValue = b[sortField] as string;
     }
 
     if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
@@ -289,9 +257,16 @@ export function AdminDevicesTable({
                             setViewSensorsOpen(true);
                           }}
                           className="text-xs"
+                          disabled={
+                            !isReceiver(device) ||
+                            !device.connectedSensorIds?.length
+                          }
                         >
                           View Sensors (
-                          {(device as Receiver).connectedSensorIds.length})
+                          {isReceiver(device)
+                            ? device.connectedSensorIds?.length ?? 0
+                            : 0}
+                          )
                         </Button>
                       )}
                     </TableCell>
@@ -408,9 +383,16 @@ export function AdminDevicesTable({
                         setViewSensorsOpen(true);
                       }}
                       className="p-0 h-auto text-xs text-blue-600 hover:underline"
+                      disabled={
+                        !isReceiver(device) ||
+                        !device.connectedSensorIds?.length
+                      }
                     >
                       View Sensors (
-                      {(device as Receiver).connectedSensorIds.length})
+                      {isReceiver(device)
+                        ? device.connectedSensorIds?.length ?? 0
+                        : 0}
+                      )
                     </Button>
                   )}
                 </div>
@@ -491,15 +473,15 @@ export function AdminDevicesTable({
                 />
               </div>
               <div className="max-h-[50vh] overflow-y-auto">
-                {filteredSensors(selectedReceiver.connectedSensorIds).length >
-                0 ? (
-                  filteredSensors(selectedReceiver.connectedSensorIds).map(
-                    (sensorId, index) => (
-                      <div key={index} className="p-2 md:p-3 border-b">
-                        <p className="text-xs md:text-sm">{sensorId}</p>
-                      </div>
-                    )
-                  )
+                {filteredSensors(selectedReceiver.connectedSensorIds ?? [])
+                  .length > 0 ? (
+                  filteredSensors(
+                    selectedReceiver.connectedSensorIds ?? []
+                  ).map((sensorId, index) => (
+                    <div key={index} className="p-2 md:p-3 border-b">
+                      <p className="text-xs md:text-sm">{sensorId}</p>
+                    </div>
+                  ))
                 ) : (
                   <div className="py-3 md:py-4 text-center text-xs md:text-sm text-gray-500">
                     No sensors found
