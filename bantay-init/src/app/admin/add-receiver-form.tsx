@@ -22,6 +22,16 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 
+interface Receiver {
+  id: number;
+  sensorName: string;
+  location: string;
+  receiverId: string;
+  connectedSensorIds?: string[];
+  registerDate: string;
+  status: string;
+}
+
 interface AddReceiverFormProps {
   onAdd: (receiver: any) => void;
   selectedLocation: {
@@ -31,6 +41,7 @@ interface AddReceiverFormProps {
   } | null;
   editingDevice?: any;
   onCancel: () => void;
+  existingReceivers: Receiver[]; // Add this prop to get existing receivers
 }
 
 // Sample sensor data with region, province, and municipality
@@ -77,6 +88,7 @@ export function AddReceiverForm({
   selectedLocation,
   editingDevice,
   onCancel,
+  existingReceivers,
 }: AddReceiverFormProps) {
   const [formData, setFormData] = useState({
     receiverName: "",
@@ -100,6 +112,24 @@ export function AddReceiverForm({
   const [filterRegion, setFilterRegion] = useState("all");
   const [filterProvince, setFilterProvince] = useState("all");
   const [filterMunicipality, setFilterMunicipality] = useState("all");
+
+  // Generate the next receiverId in the format R-###
+  useEffect(() => {
+    if (!editingDevice) {
+      // Only auto-generate if not editing an existing device
+      const existingIds = existingReceivers
+        .map((receiver) => {
+          const match = receiver.receiverId.match(/^R-(\d{3})$/);
+          return match ? parseInt(match[1], 10) : 0;
+        })
+        .filter((num) => !isNaN(num));
+
+      const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+      const nextId = maxId + 1;
+      const formattedId = `R-${nextId.toString().padStart(3, "0")}`; // e.g., R-001, R-002
+      setFormData((prev) => ({ ...prev, receiverId: formattedId }));
+    }
+  }, [existingReceivers, editingDevice]);
 
   // Update form when editing device is set
   useEffect(() => {
@@ -292,7 +322,7 @@ export function AddReceiverForm({
           <Input
             id="receiverName"
             name="receiverName"
-            placeholder="Receiver 1"
+            placeholder="RCV-01"
             value={formData.receiverName}
             onChange={handleChange}
             required
@@ -306,8 +336,8 @@ export function AddReceiverForm({
             name="receiverId"
             placeholder="R-001"
             value={formData.receiverId}
-            onChange={handleChange}
-            required
+            readOnly // Make the input read-only since it's auto-generated
+            className="bg-gray-100 cursor-not-allowed" // Style to indicate it's disabled
           />
         </div>
 
@@ -316,7 +346,7 @@ export function AddReceiverForm({
           <Input
             id="longitude"
             name="longitude"
-            placeholder="38.8951"
+            placeholder="e.g. 122.5656"
             value={formData.longitude}
             onChange={handleChange}
             required
@@ -328,7 +358,7 @@ export function AddReceiverForm({
           <Input
             id="latitude"
             name="latitude"
-            placeholder="77.0364"
+            placeholder="e.g. 77.0364"
             value={formData.latitude}
             onChange={handleChange}
             required
