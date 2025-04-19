@@ -264,7 +264,6 @@ export default function AdminDashboard() {
               </DialogHeader>
               <DialogFooter>
                 <Button
-                  className="mt-2"
                   variant="outline"
                   onClick={() => setIsLogoutDialogOpen(false)}
                 >
