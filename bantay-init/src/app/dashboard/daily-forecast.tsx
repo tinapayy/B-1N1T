@@ -2,14 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { CardHeader, CardContent } from "@/components/ui/card";
-import {
-  Cloud,
-  CloudRain,
-  CloudLightning,
-  Sun,
-  CloudSun,
-  Loader2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -18,28 +11,12 @@ import {
 } from "@/components/ui/tooltip";
 import { motion } from "framer-motion";
 import { DailyForecastData, fetchDailyForecast } from "@/lib/open-meteo";
+import { getWeatherIconInfo } from "@/components/ui/weather-icons";
 
 interface DailyForecastProps {
   latitude: number;
   longitude: number;
 }
-
-const getWeatherIcon = (condition: DailyForecastData["condition"]) => {
-  switch (condition) {
-    case "sunny":
-      return Sun;
-    case "partly-cloudy":
-      return CloudSun;
-    case "cloudy":
-      return Cloud;
-    case "rain":
-      return CloudRain;
-    case "storm":
-      return CloudLightning;
-    default:
-      return Sun;
-  }
-};
 
 const formatCondition = (condition: DailyForecastData["condition"]) => {
   return condition
@@ -92,7 +69,9 @@ export function DailyForecast({ latitude, longitude }: DailyForecastProps) {
         <CardContent className="pt-4 h-full overflow-y-auto">
           <div className="space-y-4">
             {forecasts.map((forecast, index) => {
-              const Icon = getWeatherIcon(forecast.condition);
+              const { weatherIconPath } = getWeatherIconInfo(
+                forecast.condition
+              );
               return (
                 <Tooltip key={forecast.day}>
                   <TooltipTrigger asChild>
@@ -105,9 +84,10 @@ export function DailyForecast({ latitude, longitude }: DailyForecastProps) {
                       <span className="w-20 text-base font-medium">
                         {forecast.day}
                       </span>
-                      <Icon
-                        className="h-6 w-6 text-gray-600"
-                        strokeWidth={1.5}
+                      <img
+                        src={weatherIconPath}
+                        alt={forecast.condition}
+                        className="h-6 w-6"
                       />
                       <div className="w-20 flex justify-end gap-2">
                         <span className="font-semibold">

@@ -2,16 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { CardHeader, CardContent } from "@/components/ui/card";
-import {
-  Cloud,
-  CloudRain,
-  CloudLightning,
-  Sun,
-  CloudSun,
-  ChevronRight,
-  ChevronLeft,
-  Loader2,
-} from "lucide-react";
+import { ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { HourlyForecastData, fetchHourlyForecast } from "@/lib/open-meteo";
 import {
@@ -20,28 +11,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getWeatherIconInfo } from "@/components/ui/weather-icons";
 
 interface HourlyForecastProps {
   latitude: number;
   longitude: number;
 }
-
-const getWeatherIcon = (condition: HourlyForecastData["condition"]) => {
-  switch (condition) {
-    case "sunny":
-      return Sun;
-    case "partly-cloudy":
-      return CloudSun;
-    case "cloudy":
-      return Cloud;
-    case "rain":
-      return CloudRain;
-    case "storm":
-      return CloudLightning;
-    default:
-      return Sun;
-  }
-};
 
 const formatCondition = (condition: HourlyForecastData["condition"]) => {
   return condition
@@ -175,7 +150,12 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
             {/* Mobile View (Column Layout) */}
             <div className="sm:hidden grid grid-cols-1 gap-3">
               {forecasts.map((forecast, index) => {
-                const Icon = getWeatherIcon(forecast.condition);
+                const {
+                  weatherIconPath,
+                  isNight,
+                  nightIconPath,
+                  showOnlyNightIcon,
+                } = getWeatherIconInfo(forecast.condition, forecast.time);
                 return (
                   <Tooltip key={forecast.time}>
                     <TooltipTrigger asChild>
@@ -198,8 +178,29 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
                             {forecast.temperature}°C
                           </span>
                         </div>
-                        <div className="ml-auto">
-                          <Icon className="w-8 h-8" strokeWidth={1.5} />
+                        <div className="ml-auto flex items-center gap-1">
+                          {showOnlyNightIcon ? (
+                            <img
+                              src={nightIconPath}
+                              alt="night"
+                              className="w-8 h-8"
+                            />
+                          ) : (
+                            <>
+                              <img
+                                src={weatherIconPath}
+                                alt={forecast.condition}
+                                className="w-8 h-8"
+                              />
+                              {isNight && (
+                                <img
+                                  src={nightIconPath}
+                                  alt="night"
+                                  className="w-8 h-8"
+                                />
+                              )}
+                            </>
+                          )}
                         </div>
                       </motion.div>
                     </TooltipTrigger>
@@ -225,7 +226,12 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
               onMouseLeave={handleMouseUp}
             >
               {forecasts.map((forecast, index) => {
-                const Icon = getWeatherIcon(forecast.condition);
+                const {
+                  weatherIconPath,
+                  isNight,
+                  nightIconPath,
+                  showOnlyNightIcon,
+                } = getWeatherIconInfo(forecast.condition, forecast.time);
                 return (
                   <Tooltip key={forecast.time}>
                     <TooltipTrigger asChild>
@@ -243,8 +249,29 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
                         <span className="text-base font-medium">
                           {forecast.time}
                         </span>
-                        <div className="flex-1 flex items-center justify-center">
-                          <Icon className="w-12 h-12" strokeWidth={1.5} />
+                        <div className="flex-1 flex items-center justify-center gap-2">
+                          {showOnlyNightIcon ? (
+                            <img
+                              src={nightIconPath}
+                              alt="night"
+                              className="w-12 h-12"
+                            />
+                          ) : (
+                            <>
+                              <img
+                                src={weatherIconPath}
+                                alt={forecast.condition}
+                                className="w-12 h-12"
+                              />
+                              {isNight && (
+                                <img
+                                  src={nightIconPath}
+                                  alt="night"
+                                  className="w-12 h-12"
+                                />
+                              )}
+                            </>
+                          )}
                         </div>
                         <span className="text-2xl font-semibold">
                           {forecast.temperature}°C
