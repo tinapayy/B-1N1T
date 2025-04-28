@@ -1,3 +1,6 @@
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Thermometer, Droplets } from "lucide-react";
@@ -7,7 +10,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import useFirebaseData from "../../lib/useFirebaseData";
 import { format } from "date-fns";
 
 interface WeatherGaugeProps {
@@ -23,26 +25,26 @@ interface Reading {
 }
 
 export default function WeatherGauge({ location }: WeatherGaugeProps) {
-  const { data, loading, error } = useFirebaseData("/readings");
+  const { data, error, isLoading } = useSWR("/api/dashboard/live", fetcher, {
+    refreshInterval: 30000, // Refresh every 30s
+  });
   const [latestReading, setLatestReading] = useState<Reading | null>(null);
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 
   useEffect(() => {
     if (data) {
       let latest: Reading | null = null;
-
       for (const key in data) {
         const reading = data[key] as Reading;
         if (!latest || reading.timestamp > latest.timestamp) {
           latest = reading;
         }
       }
-
       setLatestReading(latest);
     }
   }, [data]);
 
-  if (loading || !latestReading) {
+  if (isLoading || !latestReading) {
     return <div className="p-4 text-center">Loading...</div>;
   }
 
@@ -58,8 +60,13 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
   const isServerTimestamp = typeof timestamp === "object" && ".sv" in timestamp;
   const actualTimestamp = isServerTimestamp ? Date.now() : timestamp;
 
-  const formattedDate = format(new Date(actualTimestamp), "MMM. d, yyyy, EEEE");
-  const formattedTime = format(new Date(actualTimestamp), "h:mm:ss a");
+  let formattedDate = "-";
+  let formattedTime = "-";
+  
+  if (actualTimestamp && !isNaN(new Date(actualTimestamp).getTime())) {
+    formattedDate = format(new Date(actualTimestamp), "MMM. d, yyyy, EEEE");
+    formattedTime = format(new Date(actualTimestamp), "h:mm:ss a");
+  }
 
   const getHeatIndexStatus = (value: number) => {
     if (value < 27)
@@ -166,8 +173,8 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
         <div className="flex justify-between items-center mb-3 sm:mb-4">
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <Thermometer className="w-4 h-4" />
-            <span>{temperature.toFixed(1)}°C</span>
-          </div>
+            <span>{typeof temperature === "number" ? temperature.toFixed(1) : "-"}°C</span>
+            </div>
           <div className="flex flex-col items-center">
             <div
               className="text-sm sm:text-base font-medium"
@@ -181,7 +188,7 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
           </div>
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <Droplets className="w-4 h-4" />
-            <span>{humidity.toFixed(1)}%</span>
+            <span>{typeof humidity === "number" ? humidity.toFixed(1) : "-"}%</span>
           </div>
         </div>
 
