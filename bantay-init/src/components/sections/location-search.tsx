@@ -129,7 +129,9 @@ export function LocationSearch({
             value={searchValue}
             onChange={(e) => {
               setSearchValue(e.target.value);
-              console.log("Search Value:", e.target.value); // Debug log
+              if (process.env.NODE_ENV === "development") {
+                console.log("Search Value:", e.target.value); // Debug log
+              }
               debouncedFetchLocations(e.target.value);
             }}
             onBlur={handleBlur}
