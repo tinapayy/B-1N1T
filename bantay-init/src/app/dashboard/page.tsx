@@ -11,14 +11,23 @@ import dynamic from "next/dynamic";
 import { LocationSearch } from "@/components/sections/location-search";
 import { NotificationDropdown } from "@/components/sections/notification-dropdown";
 
-// Dynamically import MapWidget with SSR disabled
 const MapWidget = dynamic(() => import("@/app/dashboard/map-widget"), {
   ssr: false,
 });
 
+interface Location {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
 export default function Dashboard() {
   const { setIsMobileMenuOpen } = useSidebar();
-  const [location, setLocation] = useState("Miagao, Iloilo");
+  const [location, setLocation] = useState<Location>({
+    name: "Miagao, Iloilo",
+    latitude: 10.6442,
+    longitude: 122.2352,
+  });
 
   return (
     <div className="flex-1 overflow-auto p-4 lg:p-8 pb-8 lg:pb-8">
@@ -30,11 +39,10 @@ export default function Dashboard() {
         >
           <Card className="bg-white rounded-3xl shadow-md col-span-1 min-h-[400px]">
             <CardContent className="lg:p-8 p-4 space-y-4">
-              {/* Search Bar & Icons inside Weather Gauge Section */}
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <LocationSearch
-                    initialLocation={location}
+                    initialLocation={location.name}
                     onLocationChange={(newLocation) => setLocation(newLocation)}
                   />
                 </div>
@@ -42,9 +50,7 @@ export default function Dashboard() {
                   <NotificationDropdown />
                 </div>
               </div>
-
-              {/* WeatherGauge now handles dynamic Firebase data internally */}
-              <WeatherGauge location={location} />
+              <WeatherGauge location={location.name} />
             </CardContent>
           </Card>
         </SuspenseCard>
@@ -69,7 +75,10 @@ export default function Dashboard() {
         >
           <Card className="col-span-1 bg-white rounded-3xl shadow-md min-h-[320px] max-h-[350px] overflow-auto">
             <CardContent className="p-4 h-full">
-              <DailyForecast />
+              <DailyForecast
+                latitude={location.latitude}
+                longitude={location.longitude}
+              />
             </CardContent>
           </Card>
         </SuspenseCard>
@@ -81,7 +90,10 @@ export default function Dashboard() {
         >
           <Card className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-md min-h-[320px] max-h-[350px] overflow-auto">
             <CardContent className="p-4 h-full">
-              <HourlyForecast />
+              <HourlyForecast
+                latitude={location.latitude}
+                longitude={location.longitude}
+              />
             </CardContent>
           </Card>
         </SuspenseCard>
