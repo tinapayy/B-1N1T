@@ -1,6 +1,3 @@
-#include <Crypto.h>
-#include <AES.h>
-#include <Base64.h>
 #include <Arduino.h>
 #include <LoRa.h>
 #include <SPI.h>
@@ -24,14 +21,14 @@ String STATION_ID;
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 #define SCREEN_ADDRESS 0x3C
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
-#define API_KEY ""
-#define DATABASE_URL ""
-#define FIREBASE_PROJECT_ID ""
-#define DATABASE_ID ""
-#define USER_EMAIL ""
-#define USER_PASSWORD ""
+#define WIFI_SSID "2007"
+#define WIFI_PASSWORD "2007Coffee&Pastry!"
+#define API_KEY "AIzaSyBNnRhPsc2KEg4VgeaoRxRho70xKQTELxg"
+#define DATABASE_URL "https://bantay-init-default-rtdb.asia-southeast1.firebasedatabase.app"
+#define FIREBASE_PROJECT_ID "bantay-init"
+#define DATABASE_ID "(default)"
+#define USER_EMAIL "receiver@bantay-init.com"
+#define USER_PASSWORD "123456789"
 
 FirebaseData fbdo;
 FirebaseAuth auth;
@@ -42,20 +39,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 float heatIndex, temperature, humidity;
 int lastRSSI = 0;
-
-String decryptPayload(String encryptedBase64) {
-  AES128 aes;
-  byte key[] = "A1B2C3D4E5F6G7H8";
-  aes.setKey(key, sizeof(key));
-
-  char decoded[32];
-  byte decrypted[32];
-  int decodedLength = base64_decode(decoded, encryptedBase64.c_str(), encryptedBase64.length());
-
-  aes.decryptBlock((byte*)decoded, decrypted);
-  decrypted[16] = '\0';
-  return String((char*)decrypted);
-}
 
 void setupLoRa() {
   Serial.println("LoRa Receiver");
@@ -96,24 +79,26 @@ void setupNTPClient() {
   timeClient.update();
 }
 
-void parseDecrypted(String decrypted) {
+void parsePlainPayload(String payload) {
   int index = 0;
   String data[3];
 
-  while (decrypted.indexOf(";") > 0 && index < 3) {
-    data[index] = decrypted.substring(0, decrypted.indexOf(";"));
-    decrypted = decrypted.substring(decrypted.indexOf(";") + 1);
+  while (payload.indexOf(";") > 0 && index < 3) {
+    data[index] = payload.substring(0, payload.indexOf(";"));
+    payload = payload.substring(payload.indexOf(";") + 1);
     index++;
   }
-  if (index < 3) data[index] = decrypted;
+  if (index < 3) data[index] = payload;
 
   temperature = data[0].toFloat();
   humidity = data[1].toFloat();
   heatIndex = data[2].toFloat();
 
   if (Firebase.ready() && auth.token.uid.length() > 0) {
-    String documentPath = "reading";
-    String documentId = "";
+    // Firestore flat collection: /reading/{autoId}
+    const char* collectionId = "reading";
+    const char* documentId = "";  // Auto-generated
+    const char* mask = "";        // No field mask
 
     FirebaseJson content;
     content.set("fields/temperature/doubleValue", temperature);
@@ -123,7 +108,7 @@ void parseDecrypted(String decrypted) {
     content.set("fields/sensorId/stringValue", STATION_ID);
 
     Serial.println("Uploading to Firestore...");
-    if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, DATABASE_ID, documentPath, content.raw(), documentId)) {
+    if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, DATABASE_ID, collectionId, documentId, content.raw(), mask)) {
       Serial.println("✔ Firestore write successful");
     } else {
       Serial.print("❌ Firestore write failed: ");
@@ -140,7 +125,6 @@ void parseDecrypted(String decrypted) {
     Firebase.RTDB.setJSON(&fbdo, rtdbPath.c_str(), &liveData);
   }
 }
-
 
 void updateDisplay() {
   display.clearDisplay();
@@ -177,15 +161,11 @@ void loop() {
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
     if (LoRa.available()) {
-      String encrypted = LoRa.readString();
-      Serial.print("Received encrypted: ");
-      Serial.println(encrypted);
+      String payload = LoRa.readString();
+      Serial.print("Received: ");
+      Serial.println(payload);
 
-      String decrypted = decryptPayload(encrypted);
-      Serial.print("Decrypted: ");
-      Serial.println(decrypted);
-
-      parseDecrypted(decrypted);
+      parsePlainPayload(payload);
       lastRSSI = LoRa.packetRssi();
       updateDisplay();
     }
