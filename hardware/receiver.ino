@@ -129,8 +129,18 @@ void parseDecrypted(String decrypted) {
       Serial.print("❌ Firestore write failed: ");
       Serial.println(fbdo.errorReason());
     }
+
+    // Realtime Database update
+    String rtdbPath = "/sensor_readings/" + STATION_ID;
+    FirebaseJson liveData;
+    liveData.set("temperature", temperature);
+    liveData.set("humidity", humidity);
+    liveData.set("heatIndex", heatIndex);
+    liveData.set("timestamp", timeClient.getEpochTime() * 1000);
+    Firebase.RTDB.setJSON(&fbdo, rtdbPath.c_str(), &liveData);
   }
 }
+
 
 void updateDisplay() {
   display.clearDisplay();
