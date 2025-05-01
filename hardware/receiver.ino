@@ -10,7 +10,7 @@
 #include <Firebase_ESP_Client.h>
 #include <addons/TokenHelper.h>
 
-// 🔁 MAC-address based IDs
+// MAC-address based IDs
 String STATION_ID;
 String RECEIVER_ID;
 
@@ -97,7 +97,7 @@ void parsePlainPayload(String payload) {
   heatIndex = data[2].toFloat();
 
   if (Firebase.ready() && auth.token.uid.length() > 0) {
-    // 🔁 Firestore: flat collection /reading/
+    // Firestore: flat collection /reading/
     const char* collectionId = "reading";
     const char* documentId = "";  // Auto-generated
     const char* mask = "";
@@ -108,7 +108,7 @@ void parsePlainPayload(String payload) {
     content.set("fields/heatIndex/doubleValue", heatIndex);
     content.set("fields/timestamp/integerValue", timeClient.getEpochTime() * 1000);
     content.set("fields/sensorId/stringValue", STATION_ID);
-    content.set("fields/receiverId/stringValue", RECEIVER_ID);  // 🔁
+    content.set("fields/receiverId/stringValue", RECEIVER_ID);
 
     Serial.println("Uploading to Firestore...");
     if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, DATABASE_ID, collectionId, documentId, content.raw(), mask)) {
@@ -118,14 +118,14 @@ void parsePlainPayload(String payload) {
       Serial.println(fbdo.errorReason());
     }
 
-    // 🔁 RTDB: /sensor_readings/{sensorId}
+    // RTDB: /sensor_readings/{sensorId}
     String rtdbPath = "/sensor_readings/" + STATION_ID;
     FirebaseJson liveData;
     liveData.set("temperature", temperature);
     liveData.set("humidity", humidity);
     liveData.set("heatIndex", heatIndex);
     liveData.set("timestamp", timeClient.getEpochTime() * 1000);
-    liveData.set("receiverId", RECEIVER_ID);  // 🔁
+    liveData.set("receiverId", RECEIVER_ID);  
     Firebase.RTDB.setJSON(&fbdo, rtdbPath.c_str(), &liveData);
   }
 }
