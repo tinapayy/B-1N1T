@@ -10,8 +10,9 @@
 #include <Firebase_ESP_Client.h>
 #include <addons/TokenHelper.h>
 
-// 🔁 MAC-address based ID
+// 🔁 MAC-address based IDs
 String STATION_ID;
+String RECEIVER_ID;
 
 #define ss 5
 #define rst 14
@@ -21,14 +22,14 @@ String STATION_ID;
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 #define SCREEN_ADDRESS 0x3C
-#define WIFI_SSID "2007"
-#define WIFI_PASSWORD "2007Coffee&Pastry!"
-#define API_KEY "AIzaSyBNnRhPsc2KEg4VgeaoRxRho70xKQTELxg"
-#define DATABASE_URL "https://bantay-init-default-rtdb.asia-southeast1.firebasedatabase.app"
-#define FIREBASE_PROJECT_ID "bantay-init"
-#define DATABASE_ID "(default)"
-#define USER_EMAIL "receiver@bantay-init.com"
-#define USER_PASSWORD "123456789"
+#define WIFI_SSID ""
+#define WIFI_PASSWORD ""
+#define API_KEY ""
+#define DATABASE_URL ""
+#define FIREBASE_PROJECT_ID ""
+#define DATABASE_ID ""
+#define USER_EMAIL ""
+#define USER_PASSWORD ""
 
 FirebaseData fbdo;
 FirebaseAuth auth;
@@ -60,6 +61,7 @@ void setupWifi() {
   }
   Serial.println("\nWi-Fi Connected!");
   STATION_ID = "SENSOR_" + WiFi.macAddress().substring(9);
+  RECEIVER_ID = "RECEIVER_" + WiFi.macAddress().substring(9);  // Set receiver ID
 }
 
 void setupFirebase() {
@@ -95,10 +97,10 @@ void parsePlainPayload(String payload) {
   heatIndex = data[2].toFloat();
 
   if (Firebase.ready() && auth.token.uid.length() > 0) {
-    // Firestore flat collection: /reading/{autoId}
+    // 🔁 Firestore: flat collection /reading/
     const char* collectionId = "reading";
     const char* documentId = "";  // Auto-generated
-    const char* mask = "";        // No field mask
+    const char* mask = "";
 
     FirebaseJson content;
     content.set("fields/temperature/doubleValue", temperature);
@@ -106,6 +108,7 @@ void parsePlainPayload(String payload) {
     content.set("fields/heatIndex/doubleValue", heatIndex);
     content.set("fields/timestamp/integerValue", timeClient.getEpochTime() * 1000);
     content.set("fields/sensorId/stringValue", STATION_ID);
+    content.set("fields/receiverId/stringValue", RECEIVER_ID);  // 🔁
 
     Serial.println("Uploading to Firestore...");
     if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, DATABASE_ID, collectionId, documentId, content.raw(), mask)) {
@@ -115,13 +118,14 @@ void parsePlainPayload(String payload) {
       Serial.println(fbdo.errorReason());
     }
 
-    // Realtime Database update
+    // 🔁 RTDB: /sensor_readings/{sensorId}
     String rtdbPath = "/sensor_readings/" + STATION_ID;
     FirebaseJson liveData;
     liveData.set("temperature", temperature);
     liveData.set("humidity", humidity);
     liveData.set("heatIndex", heatIndex);
     liveData.set("timestamp", timeClient.getEpochTime() * 1000);
+    liveData.set("receiverId", RECEIVER_ID);  // 🔁
     Firebase.RTDB.setJSON(&fbdo, rtdbPath.c_str(), &liveData);
   }
 }
