@@ -1,17 +1,6 @@
+#include <Crypto.h>
+#include <AES.h>
 #include <Base64.h>
-
-AESLib aesLib;
-
-String decryptPayload(String encryptedBase64) {
-  byte key[] = "A1B2C3D4E5F6G7H8";
-  char decoded[32];
-  int len = base64_decode(decoded, encryptedBase64.c_str(), encryptedBase64.length());
-  byte decrypted[32];
-  aesLib.decryptECB((byte*)decoded, decrypted, key);
-  decrypted[15] = '\0';
-  return String((char*)decrypted);
-}
-
 #include <Arduino.h>
 #include <LoRa.h>
 #include <SPI.h>
@@ -24,7 +13,9 @@ String decryptPayload(String encryptedBase64) {
 #include <Firebase_ESP_Client.h>
 #include <addons/TokenHelper.h>
 
-#define STATION_ID ""
+// 🔁 MAC-address based ID
+String STATION_ID;
+
 #define ss 5
 #define rst 14
 #define dio0 2
@@ -37,6 +28,8 @@ String decryptPayload(String encryptedBase64) {
 #define WIFI_PASSWORD ""
 #define API_KEY ""
 #define DATABASE_URL ""
+#define FIREBASE_PROJECT_ID ""
+#define DATABASE_ID ""
 #define USER_EMAIL ""
 #define USER_PASSWORD ""
 
@@ -47,9 +40,22 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 28800, 60000);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-char timeStr[30];
 float heatIndex, temperature, humidity;
 int lastRSSI = 0;
+
+String decryptPayload(String encryptedBase64) {
+  AES128 aes;
+  byte key[] = "A1B2C3D4E5F6G7H8";
+  aes.setKey(key, sizeof(key));
+
+  char decoded[32];
+  byte decrypted[32];
+  int decodedLength = base64_decode(decoded, encryptedBase64.c_str(), encryptedBase64.length());
+
+  aes.decryptBlock((byte*)decoded, decrypted);
+  decrypted[16] = '\0';
+  return String((char*)decrypted);
+}
 
 void setupLoRa() {
   Serial.println("LoRa Receiver");
@@ -70,6 +76,7 @@ void setupWifi() {
     delay(300);
   }
   Serial.println("\nWi-Fi Connected!");
+  STATION_ID = "SENSOR_" + WiFi.macAddress().substring(9);
 }
 
 void setupFirebase() {
@@ -89,99 +96,40 @@ void setupNTPClient() {
   timeClient.update();
 }
 
-void getCurrentTime() {
-  timeClient.update();
-  unsigned long epochTime = timeClient.getEpochTime(); // Get current time in seconds
-  if (epochTime == 0) {
-    Serial.println("NTP sync failed. Using fallback timestamp.");
-    epochTime = millis() / 1000; // Fallback to device uptime in seconds
-  }
-  unsigned long timestampMillis = epochTime * 1000; // Convert to milliseconds
-  snprintf(timeStr, sizeof(timeStr), "%lu", timestampMillis); // Format as string
-}
-
-void uploadToFirebase() {
-  if (Firebase.ready()) {
-    FirebaseJson content;
-    String documentPath = "/readings/";
-
-    content.set("heatIndex", heatIndex);
-    content.set("temperature", temperature);
-    content.set("humidity", humidity);
-
-    int retryCount = 0;
-    bool success = false;
-    while (retryCount < 3 && !success) {
-      Serial.print("Uploading data to Firebase... ");
-      if (Firebase.RTDB.pushJSON(&fbdo, documentPath.c_str(), &content)) {
-        Serial.println("Success!");
-        success = true;
-      } else {
-        Serial.print("Failed: ");
-        Serial.println(fbdo.errorReason());
-        retryCount++;
-        delay(500);
-      }
-    }
-  }
-}
-
-void parseLoRaData(String LoRaData) {
+void parseDecrypted(String decrypted) {
   int index = 0;
   String data[3];
 
-  while (LoRaData.indexOf(";") > 0 && index < 3) {
-    data[index] = LoRaData.substring(0, LoRaData.indexOf(";"));
-    LoRaData = LoRaData.substring(LoRaData.indexOf(";") + 1);
+  while (decrypted.indexOf(";") > 0 && index < 3) {
+    data[index] = decrypted.substring(0, decrypted.indexOf(";"));
+    decrypted = decrypted.substring(decrypted.indexOf(";") + 1);
     index++;
   }
-  if (index < 3) {
-    data[index] = LoRaData;
-  }
+  if (index < 3) data[index] = decrypted;
 
   temperature = data[0].toFloat();
   humidity = data[1].toFloat();
   heatIndex = data[2].toFloat();
 
-    if (Firebase.ready() && auth.token.uid.length() > 0) {
-      String documentPath = "reading"; // flat collection
-      String documentId = ""; // auto-ID
+  if (Firebase.ready() && auth.token.uid.length() > 0) {
+    String documentPath = "reading";
+    String documentId = "";
 
-      FirebaseJson content;
-      content.set("fields/temperature/doubleValue", temperature);
-      content.set("fields/humidity/doubleValue", humidity);
-      content.set("fields/heatIndex/doubleValue", heatIndex);
-      content.set("fields/timestamp/integerValue", timeClient.getEpochTime() * 1000);
-      content.set("fields/sensorId/stringValue", "SENSOR_001"); // replace with dynamic if needed
+    FirebaseJson content;
+    content.set("fields/temperature/doubleValue", temperature);
+    content.set("fields/humidity/doubleValue", humidity);
+    content.set("fields/heatIndex/doubleValue", heatIndex);
+    content.set("fields/timestamp/integerValue", timeClient.getEpochTime() * 1000);
+    content.set("fields/sensorId/stringValue", STATION_ID);
 
-      Serial.println("Uploading to Firestore...");
-      Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, DATABASE_ID, documentPath, content.raw(), documentId) {
-        Serial.println("✔ Firestore write successful");
-      } else {
-        Serial.print("❌ Firestore write failed: ");
-        Serial.println(fbdo.errorReason());
-      }
+    Serial.println("Uploading to Firestore...");
+    if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, DATABASE_ID, documentPath, content.raw(), documentId)) {
+      Serial.println("✔ Firestore write successful");
+    } else {
+      Serial.print("❌ Firestore write failed: ");
+      Serial.println(fbdo.errorReason());
     }
-
-
-}
-
-void setup() {
-  Serial.begin(115200);
-  delay(1000);
-  Serial.println("Starting setup");
-  if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for (;;) {}
   }
-
-  delay(2000);
-  display.clearDisplay();
-  display.setTextColor(WHITE);
-  setupWifi();
-  setupFirebase();
-  setupLoRa();
-  setupNTPClient();
 }
 
 void updateDisplay() {
@@ -197,30 +145,40 @@ void updateDisplay() {
   display.print("Heat Index: ");
   display.print(heatIndex);
   display.println(" C");
-
-  // Display RSSI
   display.print("RSSI: ");
   display.print(lastRSSI);
   display.println(" dBm");
-
   display.display();
 }
 
+void setup() {
+  Serial.begin(115200);
+  if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println(F("SSD1306 failed"));
+    while (1) {}
+  }
+  setupWifi();
+  setupFirebase();
+  setupLoRa();
+  setupNTPClient();
+}
+
 void loop() {
-  Serial.println("Checking for packets...");
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
-    Serial.print("Received packet ");
     if (LoRa.available()) {
-      String LoRaData = LoRa.readString();
-      Serial.print(LoRaData);
-      parseLoRaData(LoRaData);
-      lastRSSI = LoRa.packetRssi();  // ✅ Correct global assignment
+      String encrypted = LoRa.readString();
+      Serial.print("Received encrypted: ");
+      Serial.println(encrypted);
+
+      String decrypted = decryptPayload(encrypted);
+      Serial.print("Decrypted: ");
+      Serial.println(decrypted);
+
+      parseDecrypted(decrypted);
+      lastRSSI = LoRa.packetRssi();
       updateDisplay();
     }
-    Serial.print("' with RSSI ");
-    Serial.println(lastRSSI);       // ✅ Use updated global
-    uploadToFirebase();
   }
   delay(100);
 }
