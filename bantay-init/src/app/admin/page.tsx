@@ -383,11 +383,11 @@ export default function AdminDashboard() {
 
         {/* Map Widget */}
         <SuspenseCard
-          height="h-[300px] md:h-[400px] lg:h-[500px]"
+          height="h-[300px] md:h-[400px] lg:h-[525px]"
           className="bg-white rounded-xl shadow-sm"
         >
           <Card className="bg-white rounded-xl shadow-sm">
-            <CardContent className="p-4 h-[300px] md:h-[400px] lg:h-[500px]">
+            <CardContent className="p-4 h-[300px] md:h-[400px] lg:h-[525px]">
               <MapWidget onLocationSelect={handleLocationSelect} />
             </CardContent>
           </Card>
