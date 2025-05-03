@@ -1,5 +1,6 @@
 "use client";
 
+import useSWR from "swr";
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import HighestDailyRecords from "@/app/analytics/highest-daily-records";
@@ -11,68 +12,7 @@ import { SuspenseCard } from "@/components/ui/suspense-card";
 import { LocationSearch } from "@/components/sections/location-search";
 import { NotificationDropdown } from "@/components/sections/notification-dropdown";
 
-// Sample data for the charts
-const monthlyData = [
-  { month: "Jul", heatIndex: 2, temperature: 3 },
-  { month: "Aug", heatIndex: 3, temperature: 4 },
-  { month: "Sep", heatIndex: 4, temperature: 5 },
-  { month: "Oct", heatIndex: 5, temperature: 6 },
-  { month: "Nov", heatIndex: 3, temperature: 7 },
-  { month: "Dec", heatIndex: 6, temperature: 7 },
-  { month: "Jan", heatIndex: 7, temperature: 8 },
-  { month: "Feb", heatIndex: 8, temperature: 7 },
-];
-
-const weeklyData = [
-  { day: "MON", minTemp: 28, maxTemp: 45 },
-  { day: "TUE", minTemp: 30, maxTemp: 48 },
-  { day: "WED", minTemp: 27, maxTemp: 42 },
-  { day: "THU", minTemp: 25, maxTemp: 38 },
-  { day: "FRI", minTemp: 29, maxTemp: 44 },
-  { day: "SAT", minTemp: 31, maxTemp: 46 },
-  { day: "SUN", minTemp: 28, maxTemp: 43 },
-];
-
-const alertsData = [
-  {
-    id: 1,
-    type: "Danger",
-    heatIndex: "47°C",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-  {
-    id: 2,
-    type: "Extreme Caution",
-    heatIndex: "31°C",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-  {
-    id: 3,
-    type: "Extreme Danger",
-    heatIndex: "52°C",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-  {
-    id: 4,
-    type: "Danger",
-    heatIndex: "45°C",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-  {
-    id: 5,
-    type: "Extreme Caution",
-    heatIndex: "31",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-];
-
-// Latest reading data
-const latestReading = {
-  temperature: 31,
-  humidity: 22,
-  heatIndex: 28,
-  timestamp: new Date().getTime(),
-};
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function Analytics() {
   const { setIsMobileMenuOpen } = useSidebar();
@@ -83,6 +23,11 @@ export default function Analytics() {
   const [location, setLocation] = useState("Miagao, Iloilo");
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
+
+  const { data, isLoading } = useSWR("/api/analytics/summary?sensorId=SENSOR_001", fetcher, {
+    refreshInterval: 30000,
+    revalidateOnFocus: false,
+  });
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -125,7 +70,7 @@ export default function Analytics() {
           className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-sm"
         >
           <AnalyticsLineChart
-            data={monthlyData}
+            data={data?.monthly || []}
             timeframe={selectedTimeframe}
             setTimeframe={setSelectedTimeframe}
           />
@@ -136,7 +81,7 @@ export default function Analytics() {
           height="min-h-[300px]"
           className="col-span-1 bg-white rounded-3xl shadow-sm"
         >
-          <HighestDailyRecords latest={latestReading} />
+          <HighestDailyRecords latest={data?.todayMax || { temperature: 0, humidity: 0, heatIndex: 0 }} />
         </SuspenseCard>
       </div>
 
@@ -149,7 +94,7 @@ export default function Analytics() {
           <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
             <CardContent className="p-3 flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-xl font-bold">48</div>
+                <div className="text-xl font-bold">{data?.alertCount || 0}</div>
                 <div className="text-[10px] leading-tight mt-1 px-1">
                   Monthly
                   <br />
@@ -167,7 +112,7 @@ export default function Analytics() {
           <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm h-full">
             <CardContent className="p-3 flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-xl font-bold">51°C</div>
+                <div className="text-xl font-bold">{data?.todayMax?.heatIndex?.toFixed(1)}°C</div>
                 <div className="text-[10px] leading-tight mt-1 px-1">
                   Peak
                   <br />
@@ -208,7 +153,7 @@ export default function Analytics() {
             <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
               <CardContent className="p-4 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl font-bold">48</div>
+                  <div className="text-2xl sm:text-3xl font-bold">{data?.alertCount || 0}</div>
                   <div className="text-xs mt-1">Monthly Extreme Alerts</div>
                 </div>
               </CardContent>
@@ -222,7 +167,7 @@ export default function Analytics() {
             <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm h-full">
               <CardContent className="p-4 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl font-bold">51°C</div>
+                  <div className="text-2xl sm:text-3xl font-bold">{data?.todayMax?.heatIndex?.toFixed(1)}°C</div>
                   <div className="text-xs mt-1 px-1 sm:px-0">
                     Peak Heat Index
                   </div>
@@ -256,7 +201,7 @@ export default function Analytics() {
               className="bg-white rounded-3xl shadow-sm"
             >
               <HeatAlertTable
-                alerts={alertsData}
+                alerts={data?.alerts || []}
                 selectedAlertType={selectedAlertType}
                 setSelectedAlertType={setSelectedAlertType}
                 selectedHeatIndex={selectedHeatIndex}
@@ -273,7 +218,7 @@ export default function Analytics() {
               className="bg-white rounded-3xl shadow-sm"
             >
               <WeeklyBarChart
-                data={weeklyData}
+                data={data?.weekly || []}
                 isMobile={isMobile}
                 isTablet={isTablet}
               />
