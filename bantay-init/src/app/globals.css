@@ -1,6 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import 'leaflet/dist/leaflet.css';
+
 
 @layer base {
   :root {
@@ -70,6 +72,7 @@
   }
 }
 
+
 @layer components {
   .sidebar-link {
     @apply relative flex items-center justify-center rounded-md px-2 py-2 text-sm font-medium transition-colors text-white/80 hover:text-white;
@@ -101,5 +104,22 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer base {
+  .leaflet-container {
+    z-index: 0 !important;
+  }
+
+  .leaflet-pane,
+  .leaflet-map-pane,
+  .leaflet-tile-pane,
+  .leaflet-overlay-pane,
+  .leaflet-shadow-pane,
+  .leaflet-marker-pane,
+  .leaflet-tooltip-pane,
+  .leaflet-popup-pane {
+    z-index: 0 !important;
   }
 }
