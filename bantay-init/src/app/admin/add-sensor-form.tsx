@@ -1,6 +1,5 @@
 "use client";
 
-import type React from "react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +26,8 @@ interface AddSensorFormProps {
   } | null;
   editingDevice?: any;
   onCancel: () => void;
-  existingSensors?: Sensor[]; // Made optional to handle undefined
+  existingSensors?: Sensor[];
+  existingReceivers?: Sensor[];
 }
 
 export function AddSensorForm({
@@ -35,7 +35,8 @@ export function AddSensorForm({
   selectedLocation,
   editingDevice,
   onCancel,
-  existingSensors = [], // Default to empty array
+  existingSensors = [],
+  existingReceivers = [],
 }: AddSensorFormProps) {
   const [formData, setFormData] = useState({
     sensorName: "",
@@ -47,25 +48,23 @@ export function AddSensorForm({
     location: "",
   });
 
-  // Generate the next sensorId in the format S-###
+  const formatReceiverName = (name: string) =>
+    name.trim().toUpperCase().replace(/\s+/g, " ");
+
   useEffect(() => {
     if (!editingDevice) {
-      // Only auto-generate if not editing an existing sensor
-      const existingIds = existingSensors
-        .map((sensor) => {
-          const match = sensor.sensorId.match(/^S-(\d{3})$/);
+      const ids = existingSensors
+        .map((s) => {
+          const match = s.sensorId.match(/^S-(\d{3})$/);
           return match ? parseInt(match[1], 10) : 0;
         })
-        .filter((num) => !isNaN(num));
-
-      const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-      const nextId = maxId + 1;
-      const formattedId = `S-${nextId.toString().padStart(3, "0")}`; // e.g., S-001, S-002
-      setFormData((prev) => ({ ...prev, sensorId: formattedId }));
+        .filter((n) => !isNaN(n));
+      const next = Math.max(0, ...ids) + 1;
+      const formatted = `S-${next.toString().padStart(3, "0")}`;
+      setFormData((prev) => ({ ...prev, sensorId: formatted }));
     }
   }, [existingSensors, editingDevice]);
 
-  // Update form when editing device is set
   useEffect(() => {
     if (editingDevice) {
       setFormData({
@@ -80,32 +79,63 @@ export function AddSensorForm({
     }
   }, [editingDevice]);
 
-  // Update form when location is selected on map
   useEffect(() => {
     if (selectedLocation) {
       setFormData((prev) => ({
         ...prev,
-        longitude: selectedLocation.lng.toString(),
-        latitude: selectedLocation.lat.toString(),
-        location: selectedLocation.address,
+        longitude: selectedLocation.lng.toFixed(6),
+        latitude: selectedLocation.lat.toFixed(6),
+        location: selectedLocation.address || prev.location,
       }));
     }
   }, [selectedLocation]);
 
+  useEffect(() => {
+    if (formData.receiverName) {
+      const formatted = formatReceiverName(formData.receiverName);
+      const existing = existingReceivers?.find(
+        (r) => formatReceiverName(r.sensorName) === formatted
+      );
+      if (existing) {
+        setFormData((prev) => ({ ...prev, receiverId: existing.receiverId }));
+      } else {
+        const idNum = existingReceivers?.length + 1 || 1;
+        const autoId = `R-${idNum.toString().padStart(3, "0")}`;
+        setFormData((prev) => ({ ...prev, receiverId: autoId }));
+      }
+    }
+  }, [formData.receiverName, existingReceivers]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === "receiverName") {
+      const formatted = formatReceiverName(value);
+      setFormData((prev) => ({ ...prev, receiverName: formatted }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Create a new sensor object
+    const isDuplicateReceiver = existingReceivers?.some(
+      (r) =>
+        formatReceiverName(r.sensorName) ===
+        formatReceiverName(formData.receiverName)
+    );
+
+    if (isDuplicateReceiver && !editingDevice) {
+      alert("Receiver name already exists.");
+      return;
+    }
+
     const newSensor = {
-      sensorName: formData.sensorName,
-      location: formData.location,
+      sensorName: formData.sensorName.trim(),
+      location: formData.location.trim(),
       sensorId: formData.sensorId,
       receiverId: formData.receiverId,
+      receiverName: formatReceiverName(formData.receiverName),
       registerDate:
         editingDevice?.registerDate ||
         new Date()
@@ -122,7 +152,6 @@ export function AddSensorForm({
 
     onAdd(newSensor);
 
-    // Reset form
     setFormData({
       sensorName: "",
       sensorId: "",
@@ -156,12 +185,12 @@ export function AddSensorForm({
             name="sensorId"
             placeholder="S-001"
             value={formData.sensorId}
-            readOnly // Make the input read-only since it's auto-generated
-            className="bg-gray-100 cursor-not-allowed" // Style to indicate it's disabled
+            readOnly
+            className="bg-gray-100 cursor-not-allowed"
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 md:col-span-2">
           <Label htmlFor="receiverName">Receiver Name</Label>
           <Input
             id="receiverName"
@@ -173,15 +202,16 @@ export function AddSensorForm({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="receiverId">Receiver ID</Label>
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="location">Location</Label>
           <Input
-            id="receiverId"
-            name="receiverId"
-            placeholder="R-001"
-            value={formData.receiverId}
-            onChange={handleChange}
-            required
+            id="location"
+            name="location"
+            placeholder="Select from map..."
+            value={formData.location}
+            readOnly
+            tabIndex={-1}
+            className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
           />
         </div>
 
@@ -190,10 +220,11 @@ export function AddSensorForm({
           <Input
             id="longitude"
             name="longitude"
-            placeholder="e.g. 38.8951"
+            placeholder="122.562100"
             value={formData.longitude}
-            onChange={handleChange}
-            required
+            readOnly
+            tabIndex={-1}
+            className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
           />
         </div>
 
@@ -202,22 +233,11 @@ export function AddSensorForm({
           <Input
             id="latitude"
             name="latitude"
-            placeholder="e.g. -77.0364"
+            placeholder="10.720200"
             value={formData.latitude}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            name="location"
-            placeholder="Miagao Municipal Hall, Iloilo"
-            value={formData.location}
-            onChange={handleChange}
-            required
+            readOnly
+            tabIndex={-1}
+            className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
           />
         </div>
       </div>
