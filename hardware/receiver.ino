@@ -92,7 +92,7 @@ void parseLoRaPayload(String payload) {
   Serial.println("Heat Index: " + String(heatIndex));
 
   if (Firebase.ready() && auth.token.uid.length() > 0) {
-    const char* collectionId = "reading";
+    const char* collectionId = "readings";
     const char* documentId = "";
     const char* mask = "";
 
