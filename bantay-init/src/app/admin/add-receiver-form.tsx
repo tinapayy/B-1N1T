@@ -13,6 +13,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 interface Receiver {
   id: number;
@@ -41,6 +48,9 @@ const availableSensors = [
   { id: "ILO-02-S-001", name: "ILO-02-S-001" },
   { id: "MNL-04-S-001", name: "MNL-04-S-001" },
 ];
+
+// 👇 Replace this with Firestore query later
+const unverifiedReceiverIds = ["R-004", "R-005", "R-006"];
 
 export function AddReceiverForm({
   onAdd,
@@ -82,17 +92,8 @@ export function AddReceiverForm({
         wifiPassword: editingDevice.wifiPassword || "",
       });
       setTempConnectedSensors(editingDevice.connectedSensors || []);
-    } else {
-      const existingIds = existingReceivers
-        .map((r) => parseInt(r.receiverId.replace(/^R-/, "")))
-        .filter((n) => !isNaN(n));
-      const nextId = Math.max(0, ...existingIds) + 1;
-      setFormData((prev) => ({
-        ...prev,
-        receiverId: `R-${nextId.toString().padStart(3, "0")}`,
-      }));
     }
-  }, [existingReceivers, editingDevice]);
+  }, [editingDevice]);
 
   useEffect(() => {
     if (selectedLocation) {
@@ -182,12 +183,23 @@ export function AddReceiverForm({
         </div>
         <div className="space-y-2">
           <Label>Receiver ID</Label>
-          <Input
-            name="receiverId"
+          <Select
             value={formData.receiverId}
-            readOnly
-            className="bg-gray-100 cursor-not-allowed"
-          />
+            onValueChange={(value) =>
+              setFormData((prev) => ({ ...prev, receiverId: value }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select unverified receiver ID..." />
+            </SelectTrigger>
+            <SelectContent>
+              {unverifiedReceiverIds.map((id) => (
+                <SelectItem key={id} value={id}>
+                  {id}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
