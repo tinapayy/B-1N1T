@@ -101,7 +101,7 @@ void parseLoRaPayload(String payload) {
     content.set("fields/temperature/doubleValue", temperature);
     content.set("fields/humidity/doubleValue", humidity);
     content.set("fields/heatIndex/doubleValue", heatIndex);
-    // timestamp will be set in the API route (backend)
+    content.set("fields/receiverId/stringValue", "RECEIVER_" + WiFi.macAddress().substring(9));
 
     if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, DATABASE_ID, collectionId, documentId, content.raw(), mask)) {
       Serial.println("Firestore upload successful");
