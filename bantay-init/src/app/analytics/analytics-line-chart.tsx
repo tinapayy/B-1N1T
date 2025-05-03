@@ -5,7 +5,12 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,65 +27,13 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Download } from "lucide-react";
-import { useState, useEffect } from "react";
 
-// Sample data for different timeframes
-const weeklyData = [
-  { label: "Mon", heatIndex: 32, temperature: 30 },
-  { label: "Tue", heatIndex: 35, temperature: 32 },
-  { label: "Wed", heatIndex: 33, temperature: 31 },
-  { label: "Thu", heatIndex: 36, temperature: 33 },
-  { label: "Fri", heatIndex: 34, temperature: 32 },
-  { label: "Sat", heatIndex: 31, temperature: 29 },
-  { label: "Sun", heatIndex: 30, temperature: 28 },
-];
-
-const monthlyData = [
-  { label: "Jul", heatIndex: 32, temperature: 30 },
-  { label: "Aug", heatIndex: 33, temperature: 31 },
-  { label: "Sep", heatIndex: 34, temperature: 32 },
-  { label: "Oct", heatIndex: 35, temperature: 33 },
-  { label: "Nov", heatIndex: 33, temperature: 31 },
-  { label: "Dec", heatIndex: 36, temperature: 34 },
-  { label: "Jan", heatIndex: 37, temperature: 35 },
-  { label: "Feb", heatIndex: 38, temperature: 36 },
-];
-
-const yearlyData = [
-  { label: "2018", heatIndex: 33, temperature: 31 },
-  { label: "2019", heatIndex: 34, temperature: 32 },
-  { label: "2020", heatIndex: 35, temperature: 33 },
-  { label: "2021", heatIndex: 36, temperature: 34 },
-  { label: "2022", heatIndex: 37, temperature: 35 },
-  { label: "2023", heatIndex: 38, temperature: 36 },
-  { label: "2024", heatIndex: 39, temperature: 37 },
-];
-
-export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
-  const [chartData, setChartData] = useState(monthlyData);
-
-  useEffect(() => {
-    switch (timeframe) {
-      case "Weekly":
-        setChartData(weeklyData);
-        break;
-      case "Monthly":
-        setChartData(monthlyData);
-        break;
-      case "Yearly":
-        setChartData(yearlyData);
-        break;
-      default:
-        setChartData(monthlyData);
-    }
-  }, [timeframe]);
-
+export default function AnalyticsLineChart({ data, timeframe, setTimeframe }: any) {
   const config = {
     heatIndex: { label: "Heat Index", color: "var(--orange-primary, #f97316)" },
     temperature: { label: "Temperature", color: "var(--dark-gray-1, #353535)" },
   };
 
-  // Dynamically calculate Y-axis min/max with padding
   const getYDomain = (data: any[]) => {
     const all = data.flatMap((d) => [d.heatIndex, d.temperature]);
     const min = Math.min(...all);
@@ -89,7 +42,7 @@ export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
     return [Math.floor(min - padding), Math.ceil(max + padding)];
   };
 
-  const yDomain = getYDomain(chartData);
+  const yDomain = getYDomain(data);
 
   return (
     <Card className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-sm flex flex-col">
@@ -123,7 +76,7 @@ export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
         >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
-              data={chartData}
+              data={[...data].reverse()}
               margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
             >
               <CartesianGrid
@@ -139,7 +92,6 @@ export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
               />
               <YAxis axisLine={false} tickLine={false} domain={yDomain} />
               <ChartTooltip content={<ChartTooltipContent />} />
-
               <Line
                 type="monotone"
                 dataKey="heatIndex"
