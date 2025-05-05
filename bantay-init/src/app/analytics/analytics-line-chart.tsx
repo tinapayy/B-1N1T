@@ -1,5 +1,6 @@
 "use client";
 
+import useSWR from "swr";
 import {
   ChartContainer,
   ChartTooltip,
@@ -28,21 +29,66 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Download } from "lucide-react";
 
-export default function AnalyticsLineChart({ data, timeframe, setTimeframe }: any) {
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+const TIMEFRAME_MAP: Record<string, string> = {
+  Weekly: "week",
+  Monthly: "month",
+  Yearly: "year",
+};
+
+export default function AnalyticsLineChart({
+  sensorId,
+  timeframe,
+  setTimeframe,
+}: {
+  sensorId: string;
+  timeframe: string;
+  setTimeframe: (val: string) => void;
+}) {
+  const mappedTimeframe = TIMEFRAME_MAP[timeframe] || "week";
+
+  const { data = [], isLoading } = useSWR(
+    sensorId
+      ? `/api/analytics/summary?sensorId=${sensorId}&timeframe=${mappedTimeframe}`
+      : null,
+    fetcher,
+    { refreshInterval: 30000 }
+  );
+
+  const transformed = Array.isArray(data)
+    ? data
+        .filter(
+          (entry) =>
+            typeof entry.avgHeatIndex === "number" &&
+            typeof entry.avgTemp === "number"
+        )
+        .map((entry: any) => ({
+          label: formatLabel(entry.timestamp, timeframe),
+          heatIndex: entry.avgHeatIndex,
+          temperature: entry.avgTemp,
+        }))
+    : [];
+
   const config = {
-    heatIndex: { label: "Heat Index", color: "var(--orange-primary, #f97316)" },
-    temperature: { label: "Temperature", color: "var(--dark-gray-1, #353535)" },
+    heatIndex: {
+      label: "Heat Index",
+      color: "var(--orange-primary, #f97316)",
+    },
+    temperature: {
+      label: "Temperature",
+      color: "var(--dark-gray-1, #353535)",
+    },
   };
 
-  const getYDomain = (data: any[]) => {
-    const all = data.flatMap((d) => [d.heatIndex, d.temperature]);
-    const min = Math.min(...all);
-    const max = Math.max(...all);
-    const padding = 2;
-    return [Math.floor(min - padding), Math.ceil(max + padding)];
+  const getYDomain = (entries: any[]) => {
+    const values = entries.flatMap((d) => [d.heatIndex, d.temperature]);
+    const valid = values.filter((v) => typeof v === "number");
+    if (!valid.length) return [0, 50];
+    const min = Math.min(...valid);
+    const max = Math.max(...valid);
+    return [Math.floor(min - 2), Math.ceil(max + 2)];
   };
-
-  const yDomain = getYDomain(data);
 
   return (
     <Card className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-sm flex flex-col">
@@ -76,7 +122,7 @@ export default function AnalyticsLineChart({ data, timeframe, setTimeframe }: an
         >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
-              data={[...data].reverse()}
+              data={transformed}
               margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
             >
               <CartesianGrid
@@ -86,11 +132,16 @@ export default function AnalyticsLineChart({ data, timeframe, setTimeframe }: an
               />
               <XAxis
                 dataKey="label"
+                tick={{ fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
-                padding={{ left: 20, right: 20 }}
+                interval={0}
               />
-              <YAxis axisLine={false} tickLine={false} domain={yDomain} />
+              <YAxis
+                domain={getYDomain(transformed)}
+                axisLine={false}
+                tickLine={false}
+              />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Line
                 type="monotone"
@@ -128,4 +179,14 @@ export default function AnalyticsLineChart({ data, timeframe, setTimeframe }: an
       </CardContent>
     </Card>
   );
+}
+
+function formatLabel(timestamp: string, timeframe: string) {
+  const date = new Date(timestamp);
+  if (timeframe === "Weekly")
+    return date.toLocaleDateString("en-US", { weekday: "short" });
+  if (timeframe === "Monthly")
+    return date.toLocaleDateString("en-US", { month: "short" });
+  if (timeframe === "Yearly") return date.getFullYear().toString();
+  return timestamp;
 }
