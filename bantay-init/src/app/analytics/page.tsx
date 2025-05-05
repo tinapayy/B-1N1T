@@ -46,14 +46,26 @@ export default function Analytics() {
   );
 
   const { data: alertData } = useSWR(
-    sensorId ? `/api/analytics/alerts?sensorId=${sensorId}` : null,
+    sensorId ? `/api/analytics/alerts?sensorId=${sensorId}&range=month` : null,
     fetcher
   );
-
+  
   const { data: highestData } = useSWR(
     sensorId ? `/api/analytics/highest?sensorId=${sensorId}` : null,
     fetcher
   );
+
+  const { data: peakData } = useSWR(
+    sensorId ? `/api/analytics/peak?sensorId=${sensorId}` : null,
+    fetcher,
+    {
+      refreshInterval: 30000,
+      revalidateOnFocus: true,
+    }
+  );
+  
+  
+  console.log("PEAK DATA:", peakData); 
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -100,9 +112,8 @@ export default function Analytics() {
         />
         </SuspenseCard>
         <SuspenseCard height="min-h-[300px]" className="col-span-1 bg-white rounded-3xl shadow-sm">
-          <HighestDailyRecords
-            latest={highestData?.todayMax || { temperature: 0, humidity: 0, heatIndex: 0 }}
-          />
+        <HighestDailyRecords sensorId={sensorId} />
+
         </SuspenseCard>
       </div>
 
@@ -119,15 +130,20 @@ export default function Analytics() {
           </Card>
         </SuspenseCard>
         <SuspenseCard height="h-[120px]" className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm">
-          <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm h-full">
-            <CardContent className="p-3 flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="text-xl font-bold">{highestData?.todayMax?.heatIndex?.toFixed(1)}°C</div>
-                <div className="text-[10px] leading-tight mt-1 px-1">Peak<br />Heat Index</div>
+        <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm h-full">
+          <CardContent className="p-3 flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="text-xl font-bold">
+                {peakData?.alltimeMax?.heatIndex != null
+                  ? `${Number(peakData.alltimeMax.heatIndex).toFixed(1)}°C`
+                  : "—"}
               </div>
-            </CardContent>
-          </Card>
-        </SuspenseCard>
+              <div className="text-[10px] leading-tight mt-1 px-1">Peak<br />Heat Index</div>
+            </div>
+          </CardContent>
+        </Card>
+      </SuspenseCard>
+
         <SuspenseCard height="h-[120px]" className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm">
           <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
             <CardContent className="p-3 flex items-center justify-center h-full">
@@ -157,7 +173,9 @@ export default function Analytics() {
             <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm h-full">
               <CardContent className="p-4 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl font-bold">{highestData?.todayMax?.heatIndex?.toFixed(1)}°C</div>
+                  <div className="text-2xl sm:text-3xl font-bold">{peakData?.alltimeMax?.heatIndex != null
+                  ? `${Number(peakData.alltimeMax.heatIndex).toFixed(1)}°C`
+                  : "—"}</div>
                   <div className="text-xs mt-1 px-1 sm:px-0">Peak Heat Index</div>
                 </div>
               </CardContent>
@@ -192,11 +210,11 @@ export default function Analytics() {
 
           <div className="xl:col-span-4">
             <SuspenseCard height="min-h-[350px]" className="bg-white rounded-3xl shadow-sm">
-              <WeeklyBarChart
-                data={weeklyData?.weekly || []}
-                isMobile={isMobile}
-                isTablet={isTablet}
-              />
+            <WeeklyBarChart
+              sensorId={sensorId ?? ""}
+              isMobile={isMobile}
+              isTablet={isTablet}
+            />
             </SuspenseCard>
           </div>
         </div>
