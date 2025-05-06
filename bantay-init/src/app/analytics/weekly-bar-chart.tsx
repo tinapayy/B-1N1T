@@ -1,4 +1,3 @@
-// app/analytics/weekly-bar-chart.tsx
 "use client";
 
 import useSWR from "swr";
@@ -21,15 +20,13 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ChevronDown } from "lucide-react";
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const METRIC_LABELS = {
   temperature: "Temperature",
@@ -75,8 +72,14 @@ export default function WeeklyBarChart({
   const chartData = sorted.map((d) => {
     const min = d[minKey] ?? null;
     const max = d[maxKey] ?? null;
-    const localTs = new Date(new Date(d.date).getTime() + 8 * 60 * 60 * 1000); 
-    const dayLabel = DAY_LABELS[(localTs.getDay() + 6) % 7];
+
+    const localDate = new Date(
+      new Date(d.date).toLocaleString("en-US", {
+        timeZone: "Asia/Manila",
+      })
+    );
+    const manilaDayIndex = (localDate.getDay() + 6) % 7; // Shift SUN=0 to end
+    const dayLabel = DAY_LABELS[manilaDayIndex];
 
     return {
       day: dayLabel,
