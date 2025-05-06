@@ -78,7 +78,7 @@ export default function WeeklyBarChart({
         timeZone: "Asia/Manila",
       })
     );
-    const manilaDayIndex = (localDate.getDay() + 6) % 7; // Shift SUN=0 to end
+    const manilaDayIndex = (localDate.getDay() + 0) % 7; // Shift SUN=0 to end
     const dayLabel = DAY_LABELS[manilaDayIndex];
 
     return {
