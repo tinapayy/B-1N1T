@@ -1,48 +1,37 @@
 // src/app/api/analytics/weekly/route.ts
+
+import { adminDb } from "@/lib/firebase-admin";
 import { NextResponse } from "next/server";
-import { getFirestore } from "firebase-admin/firestore";
-import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
+import { Timestamp } from "firebase-admin/firestore";
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
-const app =
-  getApps().length === 0
-    ? initializeApp({ credential: cert(serviceAccount) })
-    : getApp();
-const db = getFirestore(app);
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const sensorId = searchParams.get("sensorId");
 
-export async function GET() {
-  const startOfWeek = new Date();
-  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-  const startTimestamp = startOfWeek.getTime();
+    if (!sensorId || typeof sensorId !== "string") {
+      return NextResponse.json({ error: "Missing or invalid sensorId" }, { status: 400 });
+    }
 
-  const snapshot = await db
-    .collection("readings")
-    .where("timestamp", ">=", startTimestamp)
-    .get();
+    // Query only the last 7 days, ordered descending
+    const querySnapshot = await adminDb
+      .collection("summaries")
+      .where("sensorId", "==", sensorId)
+      .orderBy("date", "desc") // `date` must be Firestore Timestamp at 00:00
+      .limit(7)
+      .get();
 
-  const grouped: Record<string, { t: number[]; h: number[]; hi: number[] }> = {};
-  snapshot.docs.forEach((doc) => {
-    const d = doc.data();
-    const date = new Date(d.timestamp);
-    const day = date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
-    if (!grouped[day]) grouped[day] = { t: [], h: [], hi: [] };
-    grouped[day].t.push(d.temperature);
-    grouped[day].h.push(d.humidity);
-    grouped[day].hi.push(d.heatIndex);
-  });
+    const docs = querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        ...data,
+        date: data.date?.toDate().toISOString().slice(0, 10), // safe fallback
+      };
+    });
 
-  const buildStat = (arr: number[]) => ({
-    minTemp: Math.min(...arr),
-    maxTemp: Math.max(...arr),
-  });
-
-  const result = Object.entries(grouped).map(([day, { t, h, hi }]) => ({
-    day,
-    temperature: buildStat(t),
-    humidity: buildStat(h),
-    heatIndex: buildStat(hi),
-  }));
-
-  return NextResponse.json(result);
+    return NextResponse.json(docs);
+  } catch (err) {
+    console.error("/api/analytics/weekly error:", err);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
 }
