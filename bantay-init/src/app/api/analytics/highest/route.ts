@@ -1,6 +1,7 @@
 // File: /app/api/analytics/highest/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -10,28 +11,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing sensorId parameter" }, { status: 400 });
   }
 
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const dd = String(today.getDate()).padStart(2, "0");
-  const docId = `${sensorId}_${yyyy}-${mm}-${dd}`;
-
   try {
-    const doc = await adminDb.collection("analytics_daily_highs").doc(docId).get();
+    const snapshot = await adminDb
+      .collection("analytics_daily_highs")
+      .where("sensorId", "==", sensorId)
+      .orderBy("date", "desc")
+      .limit(7)
+      .get();
 
-    if (!doc.exists) {
-      return NextResponse.json({ error: "No data for today." }, { status: 404 });
-    }
-
-    const data = doc.data();
-    return NextResponse.json({
-      temperature: data?.highestTemp ?? null,
-      humidity: data?.highestHumidity ?? null,
-      heatIndex: data?.highestHeatIndex ?? null,
-      timestamp: data?.timestamp?.toDate().toISOString() ?? null,
+    const records = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        date: data.date.toDate().toISOString().split("T")[0],
+        highestTemp: data.highestTemp ?? null,
+        highestHumidity: data.highestHumidity ?? null,
+        highestHeatIndex: data.highestHeatIndex ?? null,
+      };
     });
+
+    return NextResponse.json(records);
   } catch (err) {
-    console.error("🔥 Failed to fetch daily high:", err);
+    console.error("Failed to fetch highest daily records:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
