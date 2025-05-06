@@ -30,11 +30,15 @@ export async function GET(req: Request) {
 
   const results = snapshot.docs.map((doc) => {
     const d = doc.data();
+    const baseDate =
+      d.weekStart?.toDate?.() ||
+      d.date?.toDate?.() ||
+      new Date(d.timestamp || Date.now());
+
+    const localDate = new Date(baseDate.getTime() + 8 * 60 * 60 * 1000); // UTC+8
+
     return {
-      timestamp: d.weekStart?.toDate?.().toISOString().slice(0, 10) ||
-                 d.date?.toDate?.().toISOString().slice(0, 10) ||
-                 d.timestamp ||
-                 null,
+      timestamp: localDate.toISOString().slice(0, 10),
       avgHeatIndex: d.avgHeatIndex ?? null,
       avgTemp: d.avgTemp ?? null,
     };
