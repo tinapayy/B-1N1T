@@ -64,9 +64,16 @@ export default function Analytics() {
     }
   );
   
+  const { data: compareData } = useSWR(
+    sensorId ? `/api/analytics/compare?sensorId=${sensorId}` : null,
+    fetcher,
+    {
+      refreshInterval: 30000,
+      revalidateOnFocus: true,
+    }
+  );
   
-  console.log("PEAK DATA:", peakData); 
-
+  
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -148,7 +155,11 @@ export default function Analytics() {
           <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
             <CardContent className="p-3 flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-xl font-bold">+2°C</div>
+                <div className="text-xl font-bold">
+                  {compareData?.changeSinceLastMonth?.delta != null
+                    ? `${compareData.changeSinceLastMonth.delta > 0 ? "+" : ""}${compareData.changeSinceLastMonth.delta}°C`
+                    : "—"}
+                </div>
                 <div className="text-[10px] leading-tight mt-1 px-1">Change<br />Since Last Month</div>
               </div>
             </CardContent>
@@ -185,7 +196,11 @@ export default function Analytics() {
             <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
               <CardContent className="p-4 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl font-bold">+2°C</div>
+                <div className="text-xl font-bold">
+                  {compareData?.changeSinceLastMonth?.delta != null
+                    ? `${compareData.changeSinceLastMonth.delta > 0 ? "+" : ""}${compareData.changeSinceLastMonth.delta}°C`
+                    : "—"}
+                </div>
                   <div className="text-xs mt-1 px-1 sm:px-0">Change Since Last Month</div>
                 </div>
               </CardContent>
