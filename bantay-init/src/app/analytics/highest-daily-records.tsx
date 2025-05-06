@@ -13,9 +13,11 @@ export default function HighestDailyRecords({ sensorId }: { sensorId: string }) 
     { refreshInterval: 30000, dedupingInterval: 30000 }
   );
 
-  const heatIndex = data?.heatIndex;
-  const temperature = data?.temperature;
-  const humidity = data?.humidity;
+  const latest = Array.isArray(data) && data.length > 0 ? data[0] : null;
+
+  const heatIndex = latest?.highestHeatIndex;
+  const temperature = latest?.highestTemp;
+  const humidity = latest?.highestHumidity;
 
   return (
     <Card className="col-span-1 bg-white rounded-3xl shadow-sm flex flex-col">
