@@ -4,12 +4,13 @@ import { adminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 
 const metricFieldMap: Record<string, { min: string; max: string }> = {
-  "temperature": { min: "minTemp", max: "maxTemp" },
-  "humidity": { min: "minHumidity", max: "maxHumidity" },
-  "heatIndex": { min: "minHeatIndex", max: "maxHeatIndex" },
+  temperature: { min: "minTemp", max: "maxTemp" },
+  humidity: { min: "minHumidity", max: "maxHumidity" },
+  heatIndex: { min: "minHeatIndex", max: "maxHeatIndex" },
 };
 
-const dayLabels = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+// Monday-start day labels
+const dayLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -17,15 +18,12 @@ export async function GET(req: NextRequest) {
   const metric = searchParams.get("metric")?.toLowerCase();
 
   if (!sensorId || !metric || !(metric in metricFieldMap)) {
-    return NextResponse.json(
-      { error: "Missing or invalid parameters" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Missing or invalid parameters" }, { status: 400 });
   }
 
   const today = new Date();
   const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay()); // start of week (Sunday)
+  weekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Start of week (Monday)
   weekStart.setHours(0, 0, 0, 0);
 
   const snapshot = await adminDb
@@ -36,29 +34,35 @@ export async function GET(req: NextRequest) {
 
   const rawDocs = snapshot.docs.map((doc) => doc.data());
 
-  const dataByDay: Record<string, { day: string; minTemp: number; maxTemp: number }> = {};
+  const dataByDay: Record<string, Record<string, any>> = {};
   for (let doc of rawDocs) {
     const ts = doc.timestamp?.toDate?.();
     if (!ts) continue;
-    const dayLabel = dayLabels[ts.getDay()];
+
+    const localDay = new Date(ts).toLocaleDateString("en-PH", { weekday: "short", timeZone: "Asia/Manila" }).toUpperCase();
+    const dayLabel = localDay.slice(0, 3); // Ensures "MON", "TUE", etc.
+
     const minVal = doc[metricFieldMap[metric].min];
     const maxVal = doc[metricFieldMap[metric].max];
+
     if (minVal != null && maxVal != null) {
       dataByDay[dayLabel] = {
-        day: dayLabel,
-        minTemp: minVal,
-        maxTemp: maxVal,
+        ...dataByDay[dayLabel],
+        [metricFieldMap[metric].min]: minVal,
+        [metricFieldMap[metric].max]: maxVal,
       };
     }
   }
 
-  // Ensure all 7 days are accounted for
+  const { min: minKey, max: maxKey } = metricFieldMap[metric];
   const chartData = dayLabels.map((label) => {
-    const existing = dataByDay[label];
+    const entry = dataByDay[label];
+    const min = entry?.[minKey] ?? 0;
+    const max = entry?.[maxKey] ?? 0;
     return {
       day: label,
-      minTemp: existing?.minTemp ?? 0,
-      maxTemp: existing?.maxTemp ?? 0,
+      min,
+      delta: max - min,
     };
   });
 
