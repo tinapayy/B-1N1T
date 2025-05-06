@@ -1,3 +1,5 @@
+// api/analytics/alerts/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
@@ -11,8 +13,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing sensorId parameter" }, { status: 400 });
   }
 
-  // === TIME RANGE HANDLING ===
-  const now = new Date();
+  // Shift base date to PH time (UTC+8)
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
   let start: Date;
 
   switch (range) {
@@ -22,7 +24,8 @@ export async function GET(req: NextRequest) {
       break;
     case "week":
       start = new Date(now);
-      start.setDate(now.getDate() - 7);
+      start.setDate(start.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
       break;
     case "month":
     default:
@@ -30,7 +33,7 @@ export async function GET(req: NextRequest) {
       break;
   }
 
-  const startTimestamp = Timestamp.fromDate(start);
+  const startTimestamp = Timestamp.fromDate(new Date(start.getTime() - 8 * 60 * 60 * 1000)); // shift back to UTC for Firestore
 
   try {
     const snapshot = await adminDb
