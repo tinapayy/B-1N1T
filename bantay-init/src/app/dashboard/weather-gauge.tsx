@@ -1,7 +1,7 @@
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Thermometer, Droplets } from "lucide-react";
 import {
@@ -13,7 +13,7 @@ import {
 import { format } from "date-fns";
 
 interface WeatherGaugeProps {
-  location: string;
+  sensorId: string;
 }
 
 interface Reading {
@@ -24,25 +24,46 @@ interface Reading {
   timestamp: number | { ".sv": string };
 }
 
-export default function WeatherGauge({ location }: WeatherGaugeProps) {
-  const { data, error, isLoading } = useSWR("/api/dashboard/live", fetcher, {
-    refreshInterval: 30000, // Refresh every 30s
-  });
+export default function WeatherGauge({ sensorId }: WeatherGaugeProps) {
+  const { data, error, isLoading } = useSWR(
+    sensorId ? `/api/dashboard/live?sensorId=${sensorId}` : null,
+    fetcher,
+    { refreshInterval: 30000 }
+  );
+  
   const [latestReading, setLatestReading] = useState<Reading | null>(null);
   const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 
+  const previousReadingRef = useRef<Reading | null>(null);
+
   useEffect(() => {
-    if (data) {
-      let latest: Reading | null = null;
-      for (const key in data) {
-        const reading = data[key] as Reading;
-        if (!latest || reading.timestamp > latest.timestamp) {
-          latest = reading;
-        }
+    if (data && typeof data === "object") {
+      console.log("Fetched data:", data);
+      console.log("Using sensorId:", sensorId);
+  
+      const reading: Reading = {
+        id: sensorId,
+        temperature: data.t ?? data.temperature,
+        humidity: data.h ?? data.humidity,
+        heatIndex: data.hi ?? data.heatIndex,
+        timestamp: data.ts ?? data.timestamp,
+      };
+  
+      if (reading.heatIndex === 0) return;
+  
+      const prev = previousReadingRef.current;
+      if (
+        !prev ||
+        Math.abs(prev.temperature - reading.temperature) >= 1 ||
+        Math.abs(prev.humidity - reading.humidity) >= 1 ||
+        Math.abs(prev.heatIndex - reading.heatIndex) >= 1
+      ) {
+        setLatestReading(reading);
+        previousReadingRef.current = reading;
       }
-      setLatestReading(latest);
     }
   }, [data]);
+  
 
   if (isLoading || !latestReading) {
     return <div className="p-4 text-center">Loading...</div>;
@@ -62,7 +83,7 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
 
   let formattedDate = "-";
   let formattedTime = "-";
-  
+
   if (actualTimestamp && !isNaN(new Date(actualTimestamp).getTime())) {
     formattedDate = format(new Date(actualTimestamp), "MMM. d, yyyy, EEEE");
     formattedTime = format(new Date(actualTimestamp), "h:mm:ss a");
@@ -131,7 +152,6 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
   return (
     <TooltipProvider>
       <div className="p-4 sm:p-5 overflow-hidden lg:h-[400px]">
-        {/* Date and Time Header (Removed Location) */}
         <div className="flex justify-end mb-3 sm:mb-4">
           <div className="text-gray-500 text-[10px] sm:text-xs text-right leading-tight whitespace-nowrap">
             <div>{formattedDate}</div>
@@ -139,7 +159,6 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
           </div>
         </div>
 
-        {/* Gauge (Expanded) */}
         <div className="relative w-full h-40 sm:h-44 lg:h-36 mb-3 sm:mb-4">
           <ResponsiveContainer width="100%" height="90%">
             <PieChart>
@@ -153,8 +172,8 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
                 outerRadius="205%"
                 paddingAngle={0}
                 dataKey="value"
-                isAnimationActive={true} // Keep animation for updates
-                className="outline-none focus:outline-none" // Remove focus outline
+                isAnimationActive={true}
+                className="outline-none focus:outline-none"
               >
                 <Cell fill={status.color} />
                 <Cell fill="#D1D5DB" />
@@ -169,12 +188,11 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
           </div>
         </div>
 
-        {/* Readings */}
         <div className="flex justify-between items-center mb-3 sm:mb-4">
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <Thermometer className="w-4 h-4" />
             <span>{typeof temperature === "number" ? temperature.toFixed(1) : "-"}°C</span>
-            </div>
+          </div>
           <div className="flex flex-col items-center">
             <div
               className="text-sm sm:text-base font-medium"
@@ -192,7 +210,6 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
           </div>
         </div>
 
-        {/* Heat Index Scale */}
         <div className="w-full mb-3 sm:mb-4">
           <div
             className="h-2 sm:h-2.5 w-full rounded-full mb-1 relative"
@@ -244,7 +261,6 @@ export default function WeatherGauge({ location }: WeatherGaugeProps) {
           </div>
         </div>
 
-        {/* Warning Message with Enhanced Tooltip */}
         <div className="bg-[#2f2f2f] text-white rounded-lg p-2 md:p-4 sm:p-2 text-justify text-xs sm:text-xs relative flex items-center justify-center">
           <Tooltip open={isTooltipOpen} onOpenChange={setIsTooltipOpen}>
             <TooltipTrigger
