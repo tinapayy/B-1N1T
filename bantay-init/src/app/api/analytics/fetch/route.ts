@@ -1,24 +1,29 @@
+// src/app/api/analytics/fetch/route.ts
+
 import { adminDb } from "@/lib/firebase-admin";
 import { NextResponse } from "next/server";
 
-export async function GET() {
-    try {
-      const snapshot = await adminDb
-        .collectionGroup("data")
-        .where("sensorId", ">=", "") // filter to force Firestore to use index
-        .orderBy("timestamp", "desc")
-        .limit(500)
-        .get();
-  
-      const readings = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-  
-      return NextResponse.json(readings);
-    } catch (error) {
-      console.error("Firestore error:", error);
-      return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const sensorId = searchParams.get("sensorId");
+    const date = searchParams.get("date");
+
+    if (!sensorId || !date) {
+      return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
+
+    const docId = `${sensorId}_${date}`;
+    const docRef = adminDb.collection("summaries").doc(docId);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ id: docSnap.id, ...docSnap.data() });
+  } catch (err) {
+    console.error("/api/analytics/fetch error:", err);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-  
+}

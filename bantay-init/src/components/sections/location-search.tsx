@@ -4,26 +4,37 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { MapPin, Search, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { Location, fetchLocations } from "@/lib/open-meteo";
 import { debounce } from "lodash";
+import { Location, fetchLocations } from "@/lib/open-meteo";
 
 interface LocationSearchProps {
-  initialLocation: string;
-  onLocationChange: (location: Location) => void;
+  mode: "forecast" | "analytics";
+  initialLocation?: string;
+  onLocationChange?: (location: Location) => void; // forecast mode only
+  onSensorSelect?: (sensorId: string) => void; // analytics mode only
+}
+
+interface SensorItem {
+  sensorId: string;
+  sensorName: string;
 }
 
 export function LocationSearch({
-  initialLocation,
+  mode,
+  initialLocation = "",
   onLocationChange,
+  onSensorSelect,
 }: LocationSearchProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState(initialLocation);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [sensors, setSensors] = useState<SensorItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [noResults, setNoResults] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // 🔍 Forecast mode: debounce Open-Meteo API
   const debouncedFetchLocations = useCallback(
     debounce(async (query: string) => {
       if (query.length < 3) {
@@ -46,11 +57,19 @@ export function LocationSearch({
     []
   );
 
+  // 📡 Analytics mode: fetch sensor list once
+  useEffect(() => {
+    if (mode === "analytics") {
+      fetch("/api/sensors/names")
+        .then((res) => res.json())
+        .then((data) => setSensors(data.sensors || []))
+        .catch(() => setSensors([]));
+    }
+  }, [mode]);
+
   const handleSearchClick = useCallback(() => {
     setIsSearching(true);
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 100);
+    setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
   const handleClearClick = useCallback(() => {
@@ -69,15 +88,25 @@ export function LocationSearch({
     }
   }, [initialLocation, searchValue]);
 
-  const handleSelectLocation = useCallback(
+  const handleSelectForecastLocation = useCallback(
     (location: Location) => {
       setSearchValue(location.name);
       setIsSearching(false);
       setLocations([]);
       setNoResults(false);
-      onLocationChange(location);
+      onLocationChange?.(location);
     },
     [onLocationChange]
+  );
+
+  const handleSelectSensor = useCallback(
+    (sensor: SensorItem) => {
+      setSearchValue(sensor.sensorName);
+      setIsSearching(false);
+      setNoResults(false);
+      onSensorSelect?.(sensor.sensorId);
+    },
+    [onSensorSelect]
   );
 
   const handleKeyDown = useCallback(
@@ -87,11 +116,13 @@ export function LocationSearch({
         setIsSearching(false);
         setLocations([]);
         setNoResults(false);
-      } else if (e.key === "Enter" && locations.length > 0) {
-        handleSelectLocation(locations[0]);
+      } else if (e.key === "Enter") {
+        if (mode === "forecast" && locations.length > 0) {
+          handleSelectForecastLocation(locations[0]);
+        }
       }
     },
-    [initialLocation, locations, handleSelectLocation]
+    [initialLocation, locations, mode, handleSelectForecastLocation]
   );
 
   useEffect(() => {
@@ -130,14 +161,20 @@ export function LocationSearch({
             onChange={(e) => {
               setSearchValue(e.target.value);
               if (process.env.NODE_ENV === "development") {
-                console.log("Search Value:", e.target.value); // Debug log
+                console.log("Search Value:", e.target.value);
               }
-              debouncedFetchLocations(e.target.value);
+              if (mode === "forecast") {
+                debouncedFetchLocations(e.target.value);
+              }
             }}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             className="pl-10 pr-10 w-full"
-            placeholder="Search Philippine cities..."
+            placeholder={
+              mode === "forecast"
+                ? "Search Philippine cities..."
+                : "Search sensor names..."
+            }
           />
           {searchValue && (
             <button
@@ -161,6 +198,7 @@ export function LocationSearch({
           <Search className="h-4 w-4 text-[var(--dark-gray-1)]" />
         </div>
       )}
+
       <AnimatePresence>
         {isSearching && (
           <motion.div
@@ -169,29 +207,51 @@ export function LocationSearch({
             exit={{ opacity: 0, y: -10 }}
             className="absolute z-10 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-60 overflow-y-auto top-full"
           >
-            {isLoading ? (
+            {isLoading && mode === "forecast" ? (
               <div className="p-4 flex items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin" />
               </div>
-            ) : noResults ? (
-              <div className="p-4 text-sm text-gray-500">
-                No Philippine cities found
-              </div>
-            ) : (
-              locations.map((location) => (
-                <div
-                  key={`${location.name}-${location.latitude}`}
-                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  onClick={() => handleSelectLocation(location)}
-                >
-                  <span className="font-medium">{location.name}</span>
-                  {location.admin1 && (
-                    <span className="text-sm text-gray-500">
-                      , {location.admin1}
-                    </span>
-                  )}
+            ) : mode === "forecast" ? (
+              noResults ? (
+                <div className="p-4 text-sm text-gray-500">
+                  No Philippine cities found
                 </div>
-              ))
+              ) : (
+                locations.map((location) => (
+                  <div
+                    key={`${location.name}-${location.latitude}`}
+                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleSelectForecastLocation(location)}
+                  >
+                    <span className="font-medium">{location.name}</span>
+                    {location.admin1 && (
+                      <span className="text-sm text-gray-500">
+                        , {location.admin1}
+                      </span>
+                    )}
+                  </div>
+                ))
+              )
+            ) : (
+              sensors
+                .filter((sensor) =>
+                  sensor.sensorName
+                    .toLowerCase()
+                    .includes(searchValue.toLowerCase())
+                )
+                .map((sensor) => (
+                  <div
+                    key={sensor.sensorId}
+                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => handleSelectSensor(sensor)}
+                  >
+                    <span className="font-medium">{sensor.sensorName}</span>
+                    <span className="text-sm text-gray-500">
+                      {" "}
+                      ({sensor.sensorId})
+                    </span>
+                  </div>
+                ))
             )}
           </motion.div>
         )}
