@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -11,41 +10,18 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Shift to UTC+8 to align with PH time
-    const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
-    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const now = new Date();
+    const currentMonthId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1);
+    const previousMonthId = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, "0")}`;
 
-    const summaries = await adminDb
-      .collection("analytics_weekly_summary")
-      .where("sensorID", "==", sensorId)
-      .orderBy("weekStart", "desc")
-      .limit(12)
-      .get();
+    const [thisDoc, lastDoc] = await Promise.all([
+      adminDb.collection("analytics_monthly_summary").doc(`${sensorId}_${currentMonthId}`).get(),
+      adminDb.collection("analytics_monthly_summary").doc(`${sensorId}_${previousMonthId}`).get()
+    ]);
 
-    let thisMonthTotal = 0;
-    let thisMonthCount = 0;
-    let lastMonthTotal = 0;
-    let lastMonthCount = 0;
-
-    summaries.forEach(doc => {
-      const d = doc.data();
-      const date = d.weekStart?.toDate?.();
-      if (!date || typeof d.avgHeatIndex !== "number") return;
-
-      const shifted = new Date(date.getTime() + 8 * 60 * 60 * 1000); // UTC+8 shift
-
-      if (shifted >= startOfThisMonth) {
-        thisMonthTotal += d.avgHeatIndex;
-        thisMonthCount++;
-      } else if (shifted >= startOfLastMonth && shifted < startOfThisMonth) {
-        lastMonthTotal += d.avgHeatIndex;
-        lastMonthCount++;
-      }
-    });
-
-    const thisAvg = thisMonthCount ? thisMonthTotal / thisMonthCount : null;
-    const lastAvg = lastMonthCount ? lastMonthTotal / lastMonthCount : null;
+    const thisAvg = thisDoc.exists ? thisDoc.data()?.averageHeatIndex ?? null : null;
+    const lastAvg = lastDoc.exists ? lastDoc.data()?.averageHeatIndex ?? null : null;
 
     const delta =
       thisAvg != null && lastAvg != null
