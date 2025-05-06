@@ -87,6 +87,14 @@ export async function POST(req: Request) {
           averageHumidity: parseFloat(
             (((existing.totalHumidity || 0) + humidity) / count).toFixed(2)
           ),
+          totalTemp: (existing.totalTemp || 0) + temperature,
+          averageTemp: parseFloat(
+            (((existing.totalTemp || 0) + temperature) / count).toFixed(2)
+          ),
+          totalHeatIndex: (existing.totalHeatIndex || 0) + heatIndex,
+          averageHeatIndex: parseFloat(
+            (((existing.totalHeatIndex || 0) + heatIndex) / count).toFixed(2)
+          ),
         },
         { merge: true }
       );
@@ -144,19 +152,23 @@ export async function POST(req: Request) {
       { merge: true }
     );
 
-    const dailyHighsWrite = adminDb
-      .collection("analytics_daily_highs")
-      .doc(getTodayKey(sensorId))
-      .set(
-        {
-          sensorId,
-          timestamp: Timestamp.fromMillis(timestamp),
-          highestTemp: Math.max(existing.maxTemp ?? temperature, temperature),
-          highestHumidity: Math.max(existing.maxHumidity ?? humidity, humidity),
-          highestHeatIndex: Math.max(existing.maxHeatIndex ?? heatIndex, heatIndex),
-        },
-        { merge: true }
-      );
+    const dailyHighsRef = adminDb.collection("analytics_daily_highs").doc(getTodayKey(sensorId));
+    const dailyHighsSnap = await dailyHighsRef.get();
+    const dailyExisting = dailyHighsSnap.exists ? dailyHighsSnap.data() ?? {} : {};
+
+    const dailyHighsWrite = dailyHighsRef.set(
+      {
+        sensorId,
+        timestamp: Timestamp.fromMillis(timestamp),
+        highestTemp: Math.max(dailyExisting.highestTemp ?? temperature, temperature),
+        highestHumidity: Math.max(dailyExisting.highestHumidity ?? humidity, humidity),
+        highestHeatIndex: Math.max(dailyExisting.highestHeatIndex ?? heatIndex, heatIndex),
+      },
+      { merge: true }
+    );
+
+    const latestSnap = await adminDb.collection("sensor_latest").doc(sensorId).get();
+    const latestExisting = latestSnap.exists ? latestSnap.data() ?? {} : {};
 
     const latestWrite = adminDb
       .collection("sensor_latest")
@@ -175,8 +187,7 @@ export async function POST(req: Request) {
               : heatIndex >= 32
               ? "Extreme Caution"
               : "Safe",
-              peakHeatIndex: Math.max(existing.peakHeatIndex ?? 0, heatIndex)
-              ,
+          peakHeatIndex: Math.max(latestExisting.peakHeatIndex ?? 0, heatIndex),
         },
         { merge: true }
       );
