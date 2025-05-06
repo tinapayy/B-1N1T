@@ -39,8 +39,8 @@ export async function GET(req: Request) {
 
     return {
       timestamp: localDate.toISOString().slice(0, 10),
-      avgHeatIndex: d.avgHeatIndex ?? null,
-      avgTemp: d.avgTemp ?? null,
+      avgHeatIndex: d.averageHeatIndex ?? null,
+      avgTemp: d.averageTemp ?? null,
     };
   });
 
