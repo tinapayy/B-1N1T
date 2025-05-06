@@ -41,17 +41,18 @@ export default function Dashboard() {
             <CardContent className="lg:p-8 p-4 space-y-4">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <LocationSearch
-                    initialLocation={location.name}
-                    onLocationChange={(newLocation) => setLocation(newLocation)}
-                  />
+                <LocationSearch
+                  mode="forecast"
+                  initialLocation="Miagao, Iloilo"
+                  onLocationChange={(loc) => setLocation(loc)}
+                />
                 </div>
                 <div className="flex items-center gap-2">
                   <NotificationDropdown />
                 </div>
               </div>
-              <WeatherGauge location={location.name} />
-            </CardContent>
+              <WeatherGauge sensorId="SENSOR_002" />
+              </CardContent>
           </Card>
         </SuspenseCard>
 
