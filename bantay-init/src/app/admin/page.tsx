@@ -30,6 +30,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import LoadingComponent from "../loading";
+
 
 // Load MapWidget on the client only
 const MapWidget = dynamic(
@@ -112,12 +114,15 @@ export default function AdminDashboard() {
 
   // Redirect if not admin, but only after auth state is resolved
   useEffect(() => {
-    if (authLoading) return; // Wait until auth state is resolved
-
-    if (!isAdmin) {
+    if (!authLoading && !isAdmin) {
       router.push("/dashboard");
     }
-  }, [isAdmin, authLoading, router]);
+  }, [authLoading, isAdmin, router]);
+  
+  if (authLoading || !isAdmin) {
+    return <LoadingComponent />;
+  }
+  
 
   // Persist the deviceTab state in localStorage to maintain tab selection on refresh
   useEffect(() => {
