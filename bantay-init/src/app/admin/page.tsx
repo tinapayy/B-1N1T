@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { LogOut, Search } from "lucide-react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { LogOut, Search } from "lucide-react";
-import { AdminDevicesTable } from "@/app/admin/admin-devices-table";
-import { AddSensorForm } from "@/app/admin/add-sensor-form";
-import { AddReceiverForm } from "@/app/admin/add-receiver-form";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -15,12 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSidebar } from "@/components/providers/sidebar-provider";
-import { useAuth } from "@/components/providers/auth-provider";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SuspenseCard } from "@/components/ui/suspense-card";
-import { useRouter, usePathname } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -30,16 +25,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { SuspenseCard } from "@/components/ui/suspense-card";
 import LoadingComponent from "../loading";
 
+import { useSidebar } from "@/components/providers/sidebar-provider";
+import { useAuth } from "@/components/providers/auth-provider";
 
-// Load MapWidget on the client only
-const MapWidget = dynamic(
-  () => import("./map-widget").then((mod) => mod.MapWidget),
-  { ssr: false }
-);
+import { AdminDevicesTable } from "@/app/admin/admin-devices-table";
+import { AddSensorForm } from "@/app/admin/add-sensor-form";
+import { AddReceiverForm } from "@/app/admin/add-receiver-form";
 
-// Sample data for the sensors
+// Dynamically load map widget
+const MapWidget = dynamic(() => import("./map-widget").then(mod => mod.MapWidget), { ssr: false });
+
 const initialSensors = [
   {
     id: 1,
@@ -70,7 +68,6 @@ const initialSensors = [
   },
 ];
 
-// Sample data for the receivers
 const initialReceivers = [
   {
     id: 1,
@@ -96,10 +93,10 @@ const initialReceivers = [
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const pathname = usePathname();
   const { setIsMobileMenuOpen } = useSidebar();
   const { user, logout, isAdmin, isLoading: authLoading } = useAuth();
-  const [sensors, setSensors] = useState(initialSensors); // Initialize as array
+
+  const [sensors, setSensors] = useState(initialSensors);
   const [receivers, setReceivers] = useState(initialReceivers);
   const [searchQuery, setSearchQuery] = useState("");
   const [formType, setFormType] = useState<"sensor" | "receiver">("sensor");
@@ -112,22 +109,16 @@ export default function AdminDashboard() {
   const [editingDevice, setEditingDevice] = useState<any | null>(null);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
-  // Redirect if not admin, but only after auth state is resolved
+  // UseEffect redirect AFTER all hooks are initialized
   useEffect(() => {
     if (!authLoading && !isAdmin) {
-      router.push("/dashboard");
+      router.replace("/dashboard");
     }
   }, [authLoading, isAdmin, router]);
-  
-  if (authLoading || !isAdmin) {
-    return <LoadingComponent />;
-  }
-  
 
-  // Persist the deviceTab state in localStorage to maintain tab selection on refresh
   useEffect(() => {
     const savedTab = localStorage.getItem("adminDeviceTab");
-    if (savedTab && (savedTab === "sensors" || savedTab === "receivers")) {
+    if (savedTab === "sensors" || savedTab === "receivers") {
       setDeviceTab(savedTab);
       setFormType(savedTab === "sensors" ? "sensor" : "receiver");
     }
@@ -137,7 +128,6 @@ export default function AdminDashboard() {
     localStorage.setItem("adminDeviceTab", deviceTab);
   }, [deviceTab]);
 
-  // Filter devices based on search query
   const filteredSensors = sensors.filter(
     (sensor) =>
       sensor.sensorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -150,55 +140,48 @@ export default function AdminDashboard() {
       receiver.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Add new device
   const handleAddDevice = (newDevice: any) => {
     if (formType === "sensor") {
       if (editingDevice) {
-        // Update existing sensor
-        setSensors(
-          sensors.map((sensor) =>
+        setSensors((prev) =>
+          prev.map((sensor) =>
             sensor.id === editingDevice.id
               ? { ...newDevice, id: editingDevice.id }
               : sensor
           )
         );
       } else {
-        // Add new sensor
-        setSensors([...sensors, { ...newDevice, id: sensors.length + 1 }]);
+        setSensors((prev) => [...prev, { ...newDevice, id: prev.length + 1 }]);
       }
     } else {
       if (editingDevice) {
-        // Update existing receiver
-        setReceivers(
-          receivers.map((receiver) =>
+        setReceivers((prev) =>
+          prev.map((receiver) =>
             receiver.id === editingDevice.id
               ? { ...newDevice, id: editingDevice.id }
               : receiver
           )
         );
       } else {
-        // Add new receiver
-        setReceivers([
-          ...receivers,
-          { ...newDevice, id: receivers.length + 1 },
+        setReceivers((prev) => [
+          ...prev,
+          { ...newDevice, id: prev.length + 1 },
         ]);
       }
     }
-    // Reset editing state and selected location
+
     setEditingDevice(null);
     setSelectedLocation(null);
   };
 
-  // Delete device
   const handleDeleteDevice = (id: number) => {
     if (deviceTab === "sensors") {
-      setSensors(sensors.filter((sensor) => sensor.id !== id));
+      setSensors((prev) => prev.filter((s) => s.id !== id));
     } else {
-      setReceivers(receivers.filter((receiver) => receiver.id !== id));
+      setReceivers((prev) => prev.filter((r) => r.id !== id));
     }
   };
 
-  // Edit device
   const handleEditDevice = (device: any) => {
     setEditingDevice(device);
     setFormType(deviceTab === "sensors" ? "sensor" : "receiver");
@@ -209,31 +192,23 @@ export default function AdminDashboard() {
     });
   };
 
-  // Handle location selection from map
   const handleLocationSelect = (lat: number, lng: number, address: string) => {
     setSelectedLocation({ lat, lng, address });
   };
 
-  // Handle tab change
   const handleTabChange = (value: string) => {
     setDeviceTab(value);
     setFormType(value === "sensors" ? "sensor" : "receiver");
   };
 
-  // Handle logout confirmation
   const confirmLogout = () => {
-    logout();
     setIsLogoutDialogOpen(false);
+    setTimeout(() => logout(), 100); // avoid render-time conflict
   };
 
-  // Show a loading state while auth is being resolved
-  if (authLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-4">
-        <p className="text-gray-500">Loading...</p>
-      </div>
-    );
-  }
+  if (authLoading) return <LoadingComponent />;
+
+  if (!isAdmin) return null;
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6">
@@ -251,17 +226,9 @@ export default function AdminDashboard() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Dialog
-            open={isLogoutDialogOpen}
-            onOpenChange={setIsLogoutDialogOpen}
-          >
+          <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
             <DialogTrigger asChild>
-              <Button
-                variant="destructive"
-                size="icon"
-                title="Logout"
-                className="flex-shrink-0"
-              >
+              <Button variant="destructive" size="icon" title="Logout" className="flex-shrink-0">
                 <LogOut className="h-4 w-4" />
               </Button>
             </DialogTrigger>
@@ -269,15 +236,11 @@ export default function AdminDashboard() {
               <DialogHeader>
                 <DialogTitle>Are you sure you want to logout?</DialogTitle>
                 <DialogDescription>
-                  You will be signed out of your admin account and redirected to
-                  the login page.
+                  You will be signed out of your admin account and redirected to the login page.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsLogoutDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setIsLogoutDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button variant="destructive" onClick={confirmLogout}>
@@ -290,28 +253,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Device Tabs */}
-      <Tabs
-        defaultValue="sensors"
-        value={deviceTab}
-        onValueChange={handleTabChange}
-        className="mt-2"
-      >
+      <Tabs defaultValue="sensors" value={deviceTab} onValueChange={handleTabChange} className="mt-2">
         <TabsList className="mb-4 justify-start overflow-x-auto">
-          <TabsTrigger value="sensors" className="flex-shrink-0">
-            Sensors
-          </TabsTrigger>
-          <TabsTrigger value="receivers" className="flex-shrink-0">
-            Receivers
-          </TabsTrigger>
+          <TabsTrigger value="sensors">Sensors</TabsTrigger>
+          <TabsTrigger value="receivers">Receivers</TabsTrigger>
         </TabsList>
-
         <TabsContent value="sensors" className="mt-0">
-          {/* Sensor Table */}
-          <SuspenseCard
-            height="min-h-[200px] md:min-h-[300px]"
-            className="bg-white rounded-xl shadow-sm"
-          >
-            <Card className="bg-white rounded-xl shadow-sm">
+          <SuspenseCard height="min-h-[200px] md:min-h-[300px]">
+            <Card>
               <CardContent className="p-0 overflow-x-auto">
                 <AdminDevicesTable
                   sensors={filteredSensors}
@@ -323,14 +272,9 @@ export default function AdminDashboard() {
             </Card>
           </SuspenseCard>
         </TabsContent>
-
         <TabsContent value="receivers" className="mt-0">
-          {/* Receiver Table */}
-          <SuspenseCard
-            height="min-h-[200px] md:min-h-[300px]"
-            className="bg-white rounded-xl shadow-sm"
-          >
-            <Card className="bg-white rounded-xl shadow-sm">
+          <SuspenseCard height="min-h-[200px] md:min-h-[300px]">
+            <Card>
               <CardContent className="p-0 overflow-x-auto">
                 <AdminDevicesTable
                   sensors={filteredReceivers}
@@ -344,22 +288,18 @@ export default function AdminDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Add Form and Map Section */}
+      {/* Form + Map Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {/* Add Form Section */}
-        <SuspenseCard height="auto" className="bg-white rounded-xl shadow-sm">
-          <Card className="bg-white rounded-xl shadow-sm">
+        <SuspenseCard>
+          <Card>
             <CardContent className="p-4 md:p-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <h2 className="text-lg md:text-xl font-semibold">
-                  {editingDevice ? "Edit" : "Add"}{" "}
-                  {formType === "sensor" ? "Sensor" : "Receiver"}
+                  {editingDevice ? "Edit" : "Add"} {formType === "sensor" ? "Sensor" : "Receiver"}
                 </h2>
                 <Select
                   value={formType}
-                  onValueChange={(value) =>
-                    setFormType(value as "sensor" | "receiver")
-                  }
+                  onValueChange={(val) => setFormType(val as "sensor" | "receiver")}
                 >
                   <SelectTrigger className="w-full sm:w-[120px] text-sm">
                     <SelectValue />
@@ -370,14 +310,13 @@ export default function AdminDashboard() {
                   </SelectContent>
                 </Select>
               </div>
-
               {formType === "sensor" ? (
                 <AddSensorForm
                   onAdd={handleAddDevice}
                   selectedLocation={selectedLocation}
                   editingDevice={editingDevice}
                   onCancel={() => setEditingDevice(null)}
-                  existingSensors={sensors} // Pass sensors state
+                  existingSensors={sensors}
                 />
               ) : (
                 <AddReceiverForm
@@ -385,20 +324,15 @@ export default function AdminDashboard() {
                   selectedLocation={selectedLocation}
                   editingDevice={editingDevice}
                   onCancel={() => setEditingDevice(null)}
-                  existingReceivers={receivers} // Already passing receivers
+                  existingReceivers={receivers}
                 />
               )}
             </CardContent>
           </Card>
         </SuspenseCard>
-
-        {/* Map Widget */}
-        <SuspenseCard
-          height="h-[300px] md:h-[400px] lg:h-[525px]"
-          className="bg-white rounded-xl shadow-sm"
-        >
-          <Card className="bg-white rounded-xl shadow-sm">
-            <CardContent className="p-4 h-[300px] md:h-[400px] lg:h-[525px]">
+        <SuspenseCard height="h-[300px] md:h-[400px] lg:h-[525px]">
+          <Card>
+            <CardContent className="p-4 h-full">
               <MapWidget onLocationSelect={handleLocationSelect} />
             </CardContent>
           </Card>
