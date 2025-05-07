@@ -44,12 +44,29 @@ interface AddReceiverFormProps {
 }
 
 const availableSensors = [
-  { id: "ILO-01-S-001", name: "ILO-01-S-001" },
-  { id: "ILO-02-S-001", name: "ILO-02-S-001" },
-  { id: "MNL-04-S-001", name: "MNL-04-S-001" },
+  {
+    id: "ILO-01-S-001",
+    name: "ILO-01-S-001",
+    region: "Region VI",
+    province: "Iloilo",
+    municipality: "Miagao",
+  },
+  {
+    id: "ILO-02-S-001",
+    name: "ILO-02-S-001",
+    region: "Region VI",
+    province: "Iloilo",
+    municipality: "Jaro",
+  },
+  {
+    id: "MNL-04-S-001",
+    name: "MNL-04-S-001",
+    region: "NCR",
+    province: "Metro Manila",
+    municipality: "Makati",
+  },
 ];
 
-// 👇 Replace this with Firestore query later
 const unverifiedReceiverIds = ["R-004", "R-005", "R-006"];
 
 export function AddReceiverForm({
@@ -71,13 +88,13 @@ export function AddReceiverForm({
   });
 
   const [sensorDialogOpen, setSensorDialogOpen] = useState(false);
-  const [tempConnectedSensors, setTempConnectedSensors] = useState<string[]>(
-    []
-  );
+  const [tempConnectedSensors, setTempConnectedSensors] = useState<string[]>([]);
+  const [sensorSearch, setSensorSearch] = useState("");
+  const [filterRegion, setFilterRegion] = useState("all");
+  const [filterProvince, setFilterProvince] = useState("all");
+  const [filterMunicipality, setFilterMunicipality] = useState("all");
   const [isUpdatingWifi, setIsUpdatingWifi] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState<"success" | "failed" | null>(
-    null
-  );
+  const [updateStatus, setUpdateStatus] = useState<"success" | "failed" | null>(null);
 
   useEffect(() => {
     if (editingDevice) {
@@ -168,6 +185,35 @@ export function AddReceiverForm({
     setSensorDialogOpen(false);
   };
 
+  const handleRegionChange = (value: string) => {
+    setFilterRegion(value);
+    setFilterProvince("all");
+    setFilterMunicipality("all");
+  };
+
+  const handleProvinceChange = (value: string) => {
+    setFilterProvince(value);
+    setFilterMunicipality("all");
+  };
+
+  const filteredSensors = availableSensors.filter((sensor) => {
+    const matchesSearch = sensor.name.toLowerCase().includes(sensorSearch.toLowerCase());
+    const matchesRegion = filterRegion === "all" || sensor.region === filterRegion;
+    const matchesProvince = filterProvince === "all" || sensor.province === filterProvince;
+    const matchesMunicipality = filterMunicipality === "all" || sensor.municipality === filterMunicipality;
+    return matchesSearch && matchesRegion && matchesProvince && matchesMunicipality;
+  });
+
+  const regions = [...new Set(availableSensors.map((s) => s.region))];
+  const provinces =
+    filterRegion === "all"
+      ? [...new Set(availableSensors.map((s) => s.province))]
+      : [...new Set(availableSensors.filter((s) => s.region === filterRegion).map((s) => s.province))];
+  const municipalities =
+    filterProvince === "all"
+      ? [...new Set(availableSensors.map((s) => s.municipality))]
+      : [...new Set(availableSensors.filter((s) => s.province === filterProvince).map((s) => s.municipality))];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -185,9 +231,7 @@ export function AddReceiverForm({
           <Label>Receiver ID</Label>
           <Select
             value={formData.receiverId}
-            onValueChange={(value) =>
-              setFormData((prev) => ({ ...prev, receiverId: value }))
-            }
+            onValueChange={(value) => setFormData((prev) => ({ ...prev, receiverId: value }))}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select unverified receiver ID..." />
@@ -229,9 +273,7 @@ export function AddReceiverForm({
               type="button"
               variant="secondary"
               onClick={handleUpdateWifi}
-              disabled={
-                isUpdatingWifi || !formData.wifiSSID || !formData.wifiPassword
-              }
+              disabled={isUpdatingWifi || !formData.wifiSSID || !formData.wifiPassword}
               className="relative"
             >
               Update Wi-Fi
@@ -240,11 +282,7 @@ export function AddReceiverForm({
               )}
             </Button>
             {updateStatus && (
-              <span
-                className={`text-sm ml-2 ${
-                  updateStatus === "success" ? "text-green-600" : "text-red-600"
-                }`}
-              >
+              <span className={`text-sm ml-2 ${updateStatus === "success" ? "text-green-600" : "text-red-600"}`}>
                 {updateStatus === "success" ? "Success" : "Failed"}
               </span>
             )}
@@ -253,27 +291,15 @@ export function AddReceiverForm({
 
         <div className="space-y-2 md:col-span-2">
           <Label>Location</Label>
-          <Input
-            value={formData.location}
-            readOnly
-            className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
-          />
+          <Input value={formData.location} readOnly className="bg-gray-100 cursor-not-allowed" />
         </div>
         <div className="space-y-2">
           <Label>Longitude</Label>
-          <Input
-            value={formData.longitude}
-            readOnly
-            className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
-          />
+          <Input value={formData.longitude} readOnly className="bg-gray-100 cursor-not-allowed" />
         </div>
         <div className="space-y-2">
           <Label>Latitude</Label>
-          <Input
-            value={formData.latitude}
-            readOnly
-            className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
-          />
+          <Input value={formData.latitude} readOnly className="bg-gray-100 cursor-not-allowed" />
         </div>
       </div>
 
@@ -286,23 +312,85 @@ export function AddReceiverForm({
                 Select Sensors ({formData.connectedSensors.length})
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Select Sensors</DialogTitle>
               </DialogHeader>
-              <div className="max-h-60 overflow-y-auto space-y-2">
-                {availableSensors.map((sensor) => (
-                  <div key={sensor.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={sensor.id}
-                      checked={tempConnectedSensors.includes(sensor.id)}
-                      onCheckedChange={() => toggleSensor(sensor.id)}
-                    />
-                    <Label htmlFor={sensor.id}>{sensor.name}</Label>
+              <div className="space-y-4">
+                <Input
+                  placeholder="Search sensors..."
+                  value={sensorSearch}
+                  onChange={(e) => setSensorSearch(e.target.value)}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Region</Label>
+                    <Select onValueChange={handleRegionChange} value={filterRegion}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Regions" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Regions</SelectItem>
+                        {regions.map((region) => (
+                          <SelectItem key={region} value={region}>
+                            {region}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                ))}
+                  <div>
+                    <Label>Province</Label>
+                    <Select onValueChange={handleProvinceChange} value={filterProvince}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Provinces" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Provinces</SelectItem>
+                        {provinces.map((province) => (
+                          <SelectItem key={province} value={province}>
+                            {province}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Municipality</Label>
+                    <Select onValueChange={setFilterMunicipality} value={filterMunicipality}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Municipalities" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Municipalities</SelectItem>
+                        {municipalities.map((municipality) => (
+                          <SelectItem key={municipality} value={municipality}>
+                            {municipality}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {filteredSensors.map((sensor) => (
+                    <div key={sensor.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={sensor.id}
+                        checked={tempConnectedSensors.includes(sensor.id)}
+                        onCheckedChange={() => toggleSensor(sensor.id)}
+                      />
+                      <Label htmlFor={sensor.id}>
+                        {sensor.name} ({sensor.region}, {sensor.province}, {sensor.municipality})
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
               <DialogFooter>
+                <Button type="button" onClick={() => setSensorDialogOpen(false)}>
+                  Cancel
+                </Button>
                 <Button type="button" onClick={saveSensors}>
                   Save
                 </Button>
@@ -314,10 +402,7 @@ export function AddReceiverForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            className="bg-[var(--orange-primary)] hover:bg-orange-600"
-          >
+          <Button type="submit" className="bg-[var(--orange-primary)] hover:bg-orange-600">
             {editingDevice ? "Update" : "+ Add"}
           </Button>
         </div>
