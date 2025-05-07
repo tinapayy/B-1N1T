@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface AuthContextType {
@@ -17,35 +17,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<{ id: string; role: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const isMounted = useRef(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
+    isMounted.current = true;
+    const token = localStorage.getItem("authToken");
 
+    const checkAuth = async () => {
+      if (!token) return setIsLoading(false);
       try {
         const res = await fetch("/api/auth/verify", {
           headers: { Authorization: `Bearer ${token}` },
         });
-
-        if (res.ok) {
-          const userData = await res.json();
+        const userData = await res.json();
+        if (res.ok && isMounted.current) {
           setUser(userData);
         } else {
           setUser(null);
         }
       } catch (err) {
-        console.error("Token verification failed:", err);
+        console.error("Auth check failed:", err);
         setUser(null);
       } finally {
-        setIsLoading(false);
+        if (isMounted.current) setIsLoading(false);
       }
     };
 
     checkAuth();
+
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const login = async (credentials: { username: string; password: string }) => {
@@ -54,25 +56,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(credentials),
     });
-  
-    const data = await res.json(); // <== MISSING before
-  
+
+    const data = await res.json();
+
     if (res.ok) {
       const { token, user } = data;
       localStorage.setItem("authToken", token);
       setUser(user);
       router.push("/admin");
     } else {
-      console.error("Login failed:", data); // now logs { error: "Invalid credentials" }
       throw new Error(data?.error || "Login failed");
     }
   };
-  
 
   const logout = () => {
-    setUser(null);
     localStorage.removeItem("authToken");
-    router.push("/login");
+    setUser(null);
+    router.replace("/dashboard");
   };
 
   const isAdmin = user?.role === "admin";
