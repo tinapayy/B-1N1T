@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LogOut, Search } from "lucide-react";
 import { AdminDevicesTable } from "@/app/admin/admin-devices-table";
 import { AddSensorForm } from "@/app/admin/add-sensor-form";
 import { AddReceiverForm } from "@/app/admin/add-receiver-form";
-import { MapWidget } from "@/app/admin/map-widget";
 import {
   Select,
   SelectContent,
@@ -30,6 +30,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+// Load MapWidget on the client only
+const MapWidget = dynamic(
+  () => import("./map-widget").then((mod) => mod.MapWidget),
+  { ssr: false }
+);
 
 // Sample data for the sensors
 const initialSensors = [
@@ -383,11 +389,11 @@ export default function AdminDashboard() {
 
         {/* Map Widget */}
         <SuspenseCard
-          height="h-[300px] md:h-[400px] lg:h-[500px]"
+          height="h-[300px] md:h-[400px] lg:h-[525px]"
           className="bg-white rounded-xl shadow-sm"
         >
           <Card className="bg-white rounded-xl shadow-sm">
-            <CardContent className="p-4 h-[300px] md:h-[400px] lg:h-[500px]">
+            <CardContent className="p-4 h-[300px] md:h-[400px] lg:h-[525px]">
               <MapWidget onLocationSelect={handleLocationSelect} />
             </CardContent>
           </Card>
