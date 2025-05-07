@@ -19,19 +19,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Simulate fetching auth state (e.g., from a token in localStorage or a server)
     const checkAuth = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        // Example: Check for a token in localStorage
-        const token = localStorage.getItem("authToken");
-        if (token) {
-          // Simulate an API call to validate the token and get user data
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate delay
-          const userData = { id: "1", role: "admin" }; // Mock user data
+        const res = await fetch("/api/auth/verify", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const userData = await res.json();
           setUser(userData);
+        } else {
+          setUser(null);
         }
-      } catch (error) {
-        console.error("Auth check failed:", error);
+      } catch (err) {
+        console.error("Token verification failed:", err);
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -42,13 +49,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (credentials: { username: string; password: string }) => {
-    // Simulate login API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const userData = { id: "1", role: "admin" }; // Mock successful login
-    setUser(userData);
-    localStorage.setItem("authToken", "mock-token");
-    router.push("/admin"); // Redirect to admin dashboard after login
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+    });
+  
+    const data = await res.json(); // <== MISSING before
+  
+    if (res.ok) {
+      const { token, user } = data;
+      localStorage.setItem("authToken", token);
+      setUser(user);
+      router.push("/admin");
+    } else {
+      console.error("Login failed:", data); // now logs { error: "Invalid credentials" }
+      throw new Error(data?.error || "Login failed");
+    }
   };
+  
 
   const logout = () => {
     setUser(null);
