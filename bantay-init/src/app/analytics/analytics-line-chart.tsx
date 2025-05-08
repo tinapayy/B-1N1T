@@ -51,7 +51,7 @@ export default function AnalyticsLineChart({
   setTimeframe: (val: string) => void;
 }) {
   const mappedTimeframe = TIMEFRAME_MAP[timeframe] || "week";
-
+ 
   const { data = [], isLoading } = useSWR(
     sensorId
       ? `/api/analytics/summary?sensorId=${sensorId}&timeframe=${mappedTimeframe}`
