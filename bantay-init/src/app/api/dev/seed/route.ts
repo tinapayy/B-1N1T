@@ -37,11 +37,16 @@ export async function GET(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const err = await res.json();
-      console.error(`❌ Failed at ${new Date(ts).toISOString()}`, err);
+      const text = await res.text();
+      try {
+        const err = JSON.parse(text);
+        console.error(`Failed at ${new Date(ts).toISOString()}`, err);
+      } catch {
+        console.error(`Non-JSON error at ${new Date(ts).toISOString()}:`, text.slice(0, 100));
+      }
     } else {
       results.push(new Date(ts).toISOString());
-    }
+    }    
   }
 
   return NextResponse.json({
