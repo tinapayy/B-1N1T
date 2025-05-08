@@ -43,10 +43,11 @@ import {
 import {
   deleteVerifiedSensor,
   deleteVerifiedReceiver,
+  updateReceiverSensorConnections, // Updated import
 } from "@/lib/adminDevices";
 
 // Dynamically load map widget
-const MapWidget = dynamic(() => import("./map-widget").then(mod => mod.MapWidget), { ssr: false });
+const MapWidget = dynamic(() => import("./map-widget").then((mod) => mod.MapWidget), { ssr: false });
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -140,10 +141,7 @@ export default function AdminDashboard() {
           )
         );
       } else {
-        setReceivers((prev) => [
-          ...prev,
-          { ...newDevice, id: prev.length + 1 },
-        ]);
+        setReceivers((prev) => [...prev, { ...newDevice, id: prev.length + 1 }]);
       }
     }
     setEditingDevice(null);
@@ -198,6 +196,20 @@ export default function AdminDashboard() {
   const confirmLogout = () => {
     setIsLogoutDialogOpen(false);
     setTimeout(() => logout(), 100); // avoid render-time conflict
+  };
+
+  const handleUpdateReceiverSensors = async (receiverId: string, sensorIds: string[]) => {
+    try {
+      await updateReceiverSensorConnections(receiverId, sensorIds); // Use new function
+      setReceivers((prev) =>
+        prev.map((receiver) =>
+          receiver.id === receiverId ? { ...receiver, connectedSensorIds: sensorIds } : receiver
+        )
+      );
+    } catch (err) {
+      console.error("Failed to update receiver sensors:", err);
+      throw err;
+    }
   };
 
   if (authLoading) return <LoadingComponent />;
@@ -273,6 +285,8 @@ export default function AdminDashboard() {
                   onDelete={handleDeleteDevice}
                   onEdit={handleEditDevice}
                   deviceType="receiver"
+                  onUpdateReceiverSensors={handleUpdateReceiverSensors}
+                  allSensors={sensors}
                 />
               </CardContent>
             </Card>

@@ -66,6 +66,20 @@ export const updateReceiverSensorMapping = async (
   }
 };
 
+// New function to update the full list of connected sensor IDs
+export const updateReceiverSensorConnections = async (
+  receiverId: string,
+  sensorIds: string[]
+) => {
+  const ref = doc(firestore, "verified_receivers", receiverId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+
+  await updateDoc(ref, {
+    connectedSensorIds: sensorIds,
+  });
+};
+
 /** ────── UNVERIFIED ────── **/
 
 export const getUnverifiedSensorIds = async (): Promise<string[]> => {
