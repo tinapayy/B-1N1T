@@ -13,8 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing sensorId parameter" }, { status: 400 });
   }
 
-  // Shift base date to PH time (UTC+8)
-  const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000); // UTC+8
   let start: Date;
 
   switch (range) {
@@ -33,7 +32,7 @@ export async function GET(req: NextRequest) {
       break;
   }
 
-  const startTimestamp = Timestamp.fromDate(new Date(start.getTime() - 8 * 60 * 60 * 1000)); // shift back to UTC for Firestore
+  const startTimestamp = Timestamp.fromDate(new Date(start.getTime() - 8 * 60 * 60 * 1000)); // back to UTC
 
   try {
     const snapshot = await adminDb
@@ -47,8 +46,8 @@ export async function GET(req: NextRequest) {
       const d = doc.data();
       return {
         sensorId: d.sensorId,
-        alertType: d.alertType,
-        heatIndex: d.heatIndex,
+        alertCategory: d.alertCategory, // updated field
+        heatIndex: d.heatIndexValue ?? d.heatIndex ?? null, // schema fallback
         timestamp: d.timestamp.toDate().toISOString(),
       };
     });

@@ -1,3 +1,5 @@
+// analytics/heat-alerts-table.tsx
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -138,8 +140,12 @@ export default function HeatAlertTable({
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="pb-4 flex-grow flex flex-col">
-        <div ref={filterRef} className={`flex flex-wrap gap-2 mb-4 pb-2 ${showMobileFilters ? "block" : "hidden"} sm:flex`}>
+        <div
+          ref={filterRef}
+          className={`flex flex-wrap gap-2 mb-4 pb-2 ${showMobileFilters ? "block" : "hidden"} sm:flex`}
+        >
           {filters.map(({ value, setter, options, id }) => (
             <DropdownMenu key={id} open={openDropdown === id} onOpenChange={(o) => setOpenDropdown(o ? id : null)}>
               <DropdownMenuTrigger asChild>
@@ -159,7 +165,8 @@ export default function HeatAlertTable({
           ))}
         </div>
 
-        <div className="overflow-auto flex-grow">
+        {/* Add scroll + max height */}
+        <div className="overflow-y-auto flex-grow max-h-[320px]">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -194,7 +201,7 @@ export default function HeatAlertTable({
                     </TableCell>
                     <TableCell className="text-center">{alert.heatIndex}°C</TableCell>
                     <TableCell className="text-right text-gray-500">
-                      {new Date(alert.timestamp).toLocaleString()}
+                      {new Date(alert.timestamp).toLocaleString('en-US')}
                     </TableCell>
                   </TableRow>
                 ))
