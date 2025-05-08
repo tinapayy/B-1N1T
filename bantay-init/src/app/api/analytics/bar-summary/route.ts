@@ -1,4 +1,5 @@
 // /src/app/api/analytics/bar-summary/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
@@ -9,7 +10,6 @@ const metricFieldMap: Record<string, { min: string; max: string }> = {
   heatIndex: { min: "minHeatIndex", max: "maxHeatIndex" },
 };
 
-// Monday-start day labels
 const dayLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 export async function GET(req: NextRequest) {
@@ -21,10 +21,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing or invalid parameters" }, { status: 400 });
   }
 
-  const today = new Date();
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Start of week (Monday)
-  weekStart.setHours(0, 0, 0, 0);
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000); // UTC+8
+  const dayOffset = (now.getUTCDay() + 6) % 7; // Monday-start
+  const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dayOffset));
+  weekStart.setUTCHours(0, 0, 0, 0);
 
   const snapshot = await adminDb
     .collection("analytics_daily_highs")
@@ -34,31 +34,27 @@ export async function GET(req: NextRequest) {
 
   const rawDocs = snapshot.docs.map((doc) => doc.data());
 
-  const dataByDay: Record<string, Record<string, any>> = {};
-  for (let doc of rawDocs) {
+  const dataByIndex: Record<number, { min: number; max: number }> = {};
+
+  for (const doc of rawDocs) {
     const ts = doc.timestamp?.toDate?.();
     if (!ts) continue;
 
-    const localDay = new Date(ts).toLocaleDateString("en-PH", { weekday: "short", timeZone: "Asia/Manila" }).toUpperCase();
-    const dayLabel = localDay.slice(0, 3); // Ensures "MON", "TUE", etc.
+    const local = new Date(ts.getTime() + 8 * 60 * 60 * 1000); // convert to UTC+8
+    const dayIndex = (local.getUTCDay() + 6) % 7; // 0 = MON, ..., 6 = SUN
 
-    const minVal = doc[metricFieldMap[metric].min];
-    const maxVal = doc[metricFieldMap[metric].max];
+    const min = doc[metricFieldMap[metric].min];
+    const max = doc[metricFieldMap[metric].max];
 
-    if (minVal != null && maxVal != null) {
-      dataByDay[dayLabel] = {
-        ...dataByDay[dayLabel],
-        [metricFieldMap[metric].min]: minVal,
-        [metricFieldMap[metric].max]: maxVal,
-      };
+    if (typeof min === "number" && typeof max === "number") {
+      dataByIndex[dayIndex] = { min, max };
     }
   }
 
-  const { min: minKey, max: maxKey } = metricFieldMap[metric];
-  const chartData = dayLabels.map((label) => {
-    const entry = dataByDay[label];
-    const min = entry?.[minKey] ?? 0;
-    const max = entry?.[maxKey] ?? 0;
+  const chartData = dayLabels.map((label, index) => {
+    const entry = dataByIndex[index];
+    const min = entry?.min ?? 0;
+    const max = entry?.max ?? 0;
     return {
       day: label,
       min,

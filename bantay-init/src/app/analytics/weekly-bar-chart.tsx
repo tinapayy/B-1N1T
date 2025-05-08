@@ -1,3 +1,5 @@
+// analytics/weekly-bar-chart.tsx
+
 "use client";
 
 import useSWR from "swr";
@@ -49,7 +51,7 @@ export default function WeeklyBarChart({
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("heatIndex");
 
   const { data = [] } = useSWR(
-    sensorId ? `/api/analytics/weekly?sensorId=${sensorId}` : null,
+    sensorId ? `/api/analytics/bar-summary?sensorId=${sensorId}&metric=${selectedMetric}` : null,
     fetcher,
     {
       refreshInterval: 30000,
@@ -57,36 +59,29 @@ export default function WeeklyBarChart({
     }
   );
 
-  const sorted = Array.isArray(data)
-    ? [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    : [];
+  const today = new Date(Date.now() + 8 * 60 * 60 * 1000); // UTC+8
+  const todayIndex = (today.getUTCDay() + 6) % 7; // PH weekday index (MON=0)
 
-  const metricFieldMap: Record<MetricKey, { min: string; max: string }> = {
-    temperature: { min: "minTemp", max: "maxTemp" },
-    humidity: { min: "minHumidity", max: "maxHumidity" },
-    heatIndex: { min: "minHeatIndex", max: "maxHeatIndex" },
-  };
+  const dayIndexMap = DAY_LABELS.reduce<Record<string, number>>((acc, day, i) => {
+    acc[day] = i;
+    return acc;
+  }, {});
 
-  const { min: minKey, max: maxKey } = metricFieldMap[selectedMetric];
+  const rotatedLabels = [
+    ...DAY_LABELS.slice(todayIndex - 6 < 0 ? 7 + (todayIndex - 6) : todayIndex - 6),
+    ...DAY_LABELS.slice(0, todayIndex + 1),
+  ];
 
-  const chartData = sorted.map((d) => {
-    const min = d[minKey] ?? null;
-    const max = d[maxKey] ?? null;
-
-    const localDate = new Date(
-      new Date(d.date).toLocaleString("en-US", {
-        timeZone: "Asia/Manila",
+  const rotatedData = Array.isArray(data)
+    ? rotatedLabels.map((label) => {
+        const entry = data.find((d) => d.day === label);
+        return {
+          day: label,
+          min: entry?.min ?? 0,
+          delta: entry?.delta ?? 0,
+        };
       })
-    );
-    const manilaDayIndex = (localDate.getDay() + 0) % 7; // Shift SUN=0 to end
-    const dayLabel = DAY_LABELS[manilaDayIndex];
-
-    return {
-      day: dayLabel,
-      min,
-      delta: typeof min === "number" && typeof max === "number" ? max - min : null,
-    };
-  });
+    : [];
 
   const config = {
     min: {
@@ -123,7 +118,7 @@ export default function WeeklyBarChart({
         <ChartContainer config={config} className="h-[250px] flex-grow aspect-auto">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={chartData}
+              data={rotatedData}
               barSize={isMobile ? 14 : isTablet ? 16 : 20}
               barGap={8}
               margin={{ top: 10, right: 20, left: 0, bottom: 20 }}
