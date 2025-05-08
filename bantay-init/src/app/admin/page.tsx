@@ -35,69 +35,28 @@ import { AdminDevicesTable } from "@/app/admin/admin-devices-table";
 import { AddSensorForm } from "@/app/admin/add-sensor-form";
 import { AddReceiverForm } from "@/app/admin/add-receiver-form";
 
+import {
+  getVerifiedSensors,
+  getVerifiedReceivers,
+} from "@/lib/adminDevices";
+
+import {
+  deleteVerifiedSensor,
+  deleteVerifiedReceiver,
+} from "@/lib/adminDevices";
+
 // Dynamically load map widget
 const MapWidget = dynamic(() => import("./map-widget").then(mod => mod.MapWidget), { ssr: false });
 
-const initialSensors = [
-  {
-    id: 1,
-    sensorName: "ILO-01",
-    location: "Miagao Municipal, Iloilo",
-    sensorId: "S-001",
-    receiverId: "R-001",
-    registerDate: "12.09.2019",
-    status: "Online",
-  },
-  {
-    id: 2,
-    sensorName: "ILO-02",
-    location: "Jaro Fire Station, Iloilo, Jaro",
-    sensorId: "S-002",
-    receiverId: "R-002",
-    registerDate: "12.09.2019",
-    status: "Pinged",
-  },
-  {
-    id: 3,
-    sensorName: "MNL-04",
-    location: "Poblacion Makati, Metro Manila",
-    sensorId: "S-003",
-    receiverId: "R-001",
-    registerDate: "12.09.2019",
-    status: "Offline",
-  },
-];
-
-const initialReceivers = [
-  {
-    id: 1,
-    sensorName: "RCV-01",
-    location: "Miagao Municipal, Iloilo",
-    sensorId: "S-001",
-    receiverId: "R-001",
-    connectedSensorIds: ["S-001", "S-002", "S-003"],
-    registerDate: "12.09.2019",
-    status: "Online",
-  },
-  {
-    id: 2,
-    sensorName: "RCV-02",
-    location: "Jaro Fire Station, Iloilo, Jaro",
-    sensorId: "S-002",
-    receiverId: "R-002",
-    connectedSensorIds: ["S-004"],
-    registerDate: "12.09.2019",
-    status: "Offline",
-  },
-];
 
 export default function AdminDashboard() {
   const router = useRouter();
   const { setIsMobileMenuOpen } = useSidebar();
   const { user, logout, isAdmin, isLoading: authLoading } = useAuth();
 
-  const [sensors, setSensors] = useState(initialSensors);
-  const [receivers, setReceivers] = useState(initialReceivers);
+  const [sensors, setSensors] = useState<any[]>([]);
+  const [receivers, setReceivers] = useState<any[]>([]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [formType, setFormType] = useState<"sensor" | "receiver">("sensor");
   const [deviceTab, setDeviceTab] = useState("sensors");
@@ -108,6 +67,19 @@ export default function AdminDashboard() {
   } | null>(null);
   const [editingDevice, setEditingDevice] = useState<any | null>(null);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [sensorData, receiverData] = await Promise.all([
+        getVerifiedSensors(),
+        getVerifiedReceivers(),
+      ]);
+      setSensors(sensorData);
+      setReceivers(receiverData);
+    };
+    fetchData();
+  }, []);
+  
 
   // UseEffect redirect AFTER all hooks are initialized
   useEffect(() => {
@@ -128,17 +100,24 @@ export default function AdminDashboard() {
     localStorage.setItem("adminDeviceTab", deviceTab);
   }, [deviceTab]);
 
-  const filteredSensors = sensors.filter(
-    (sensor) =>
-      sensor.sensorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sensor.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const filteredReceivers = receivers.filter(
-    (receiver) =>
-      receiver.sensorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      receiver.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSensors = sensors.filter((sensor) => {
+    const name = typeof sensor.name === "string" ? sensor.name : "";
+    const location = typeof sensor.location === "string" ? sensor.location : "";
+    return (
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      location.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+  
+  const filteredReceivers = receivers.filter((receiver) => {
+    const name = typeof receiver.name === "string" ? receiver.name : "";
+    const location = typeof receiver.location === "string" ? receiver.location : "";
+    return (
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      location.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+  
 
   const handleAddDevice = (newDevice: any) => {
     if (formType === "sensor") {
@@ -151,7 +130,8 @@ export default function AdminDashboard() {
           )
         );
       } else {
-        setSensors((prev) => [...prev, { ...newDevice, id: prev.length + 1 }]);
+        setSensors((prev) => [...prev, { ...newDevice, id: newDevice.sensorID || newDevice.receiverID
+        }]);
       }
     } else {
       if (editingDevice) {
@@ -174,13 +154,20 @@ export default function AdminDashboard() {
     setSelectedLocation(null);
   };
 
-  const handleDeleteDevice = (id: number) => {
-    if (deviceTab === "sensors") {
-      setSensors((prev) => prev.filter((s) => s.id !== id));
-    } else {
-      setReceivers((prev) => prev.filter((r) => r.id !== id));
+  const handleDeleteDevice = async (id: string) => {
+    try {
+      if (deviceTab === "sensors") {
+        await deleteVerifiedSensor(id);
+        setSensors((prev) => prev.filter((s) => s.id !== id));
+      } else {
+        await deleteVerifiedReceiver(id);
+        setReceivers((prev) => prev.filter((r) => r.id !== id));
+      }
+    } catch (err) {
+      console.error("Delete failed:", err);
+      alert("Failed to delete device. See console for details.");
     }
-  };
+  };  
 
   const handleEditDevice = (device: any) => {
     setEditingDevice(device);

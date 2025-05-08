@@ -11,6 +11,11 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import {
+  getUnverifiedSensorIds,
+  addVerifiedSensor,
+  updateReceiverSensorMapping,
+} from "@/lib/adminDevices";
 
 interface Sensor {
   id: number;
@@ -45,9 +50,6 @@ interface AddSensorFormProps {
   existingReceivers?: Receiver[];
 }
 
-// Placeholder for now
-const unverifiedSensorIds = ["SENSOR_001", "SENSOR_002", "SENSOR_003"];
-
 export function AddSensorForm({
   onAdd,
   selectedLocation,
@@ -65,6 +67,16 @@ export function AddSensorForm({
     latitude: "",
     location: "",
   });
+
+  const [unverifiedSensorIds, setUnverifiedSensorIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadUnverified = async () => {
+      const ids = await getUnverifiedSensorIds();
+      setUnverifiedSensorIds(ids);
+    };
+    loadUnverified();
+  }, []);
 
   useEffect(() => {
     if (editingDevice) {
@@ -96,14 +108,19 @@ export function AddSensorForm({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!formData.sensorId || !formData.receiverId || !formData.latitude || !formData.longitude) {
+      alert("Missing required fields.");
+      return;
+    }
+
     const newSensor = {
-      sensorName: formData.sensorName,
+      name: formData.sensorName,
       location: formData.location,
-      sensorId: formData.sensorId,
-      receiverId: formData.receiverId,
+      sensorID: formData.sensorId,
+      receiverID: formData.receiverId,
       receiverName: formData.receiverName,
       registerDate:
         editingDevice?.registerDate ||
@@ -115,12 +132,22 @@ export function AddSensorForm({
           })
           .replace(/\//g, "."),
       status: editingDevice?.status || "Offline",
-      longitude: formData.longitude,
-      latitude: formData.latitude,
+      latitude: parseFloat(formData.latitude),
+      longitude: parseFloat(formData.longitude),
     };
 
-    onAdd(newSensor);
+    // Commit to Firestore: move to verified and update receiver mapping
+    try {
+      await addVerifiedSensor(formData.sensorId, newSensor);
+      await updateReceiverSensorMapping(formData.receiverId, formData.sensorId);
+      onAdd(newSensor);
+    } catch (err) {
+      console.error("Error verifying sensor:", err);
+      alert("Verification failed. See console for details.");
+      return;
+    }
 
+    // Reset state
     setFormData({
       sensorName: "",
       sensorId: "",
@@ -130,6 +157,7 @@ export function AddSensorForm({
       latitude: "",
       location: "",
     });
+    onCancel();
   };
 
   const sortedReceivers = useMemo(() => {
@@ -207,11 +235,17 @@ export function AddSensorForm({
               <SelectValue placeholder="Select unverified sensor ID..." />
             </SelectTrigger>
             <SelectContent>
-              {unverifiedSensorIds.map((id) => (
-                <SelectItem key={id} value={id}>
-                  {id}
+              {unverifiedSensorIds.length > 0 ? (
+                unverifiedSensorIds.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {id}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem disabled value="none">
+                  No unverified sensors
                 </SelectItem>
-              ))}
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -228,8 +262,7 @@ export function AddSensorForm({
             <SelectContent>
               {sortedReceivers.map((r) => (
                 <SelectItem key={r.receiverId} value={r.sensorName}>
-                  {r.sensorName} ({parseFloat(r.latitude).toFixed(4)},{" "}
-                  {parseFloat(r.longitude).toFixed(4)})
+                  {r.sensorName} ({parseFloat(r.latitude).toFixed(4)}, {parseFloat(r.longitude).toFixed(4)})
                 </SelectItem>
               ))}
             </SelectContent>
