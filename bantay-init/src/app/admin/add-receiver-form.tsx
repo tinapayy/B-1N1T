@@ -102,14 +102,23 @@ export function AddReceiverForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.receiverId || !formData.latitude || !formData.longitude) {
+    const { receiverId, latitude, longitude } = formData;
+
+    // In edit mode, make receiverId optional
+    if (!editingDevice && (!receiverId || !latitude || !longitude)) {
       alert("Missing required fields.");
+      return;
+    }
+
+    if (editingDevice && (!latitude || !longitude)) {
+      alert("Missing required fields: latitude and longitude.");
       return;
     }
 
     const newReceiver = {
       name: formData.name.trim(),
-      receiverId: formData.receiverId,
+      // Use existing receiverId if formData.receiverId is empty during edit
+      receiverId: editingDevice && !formData.receiverId ? editingDevice.receiverId : receiverId,
       location: formData.location,
       longitude: parseFloat(formData.longitude),
       latitude: parseFloat(formData.latitude),
@@ -121,7 +130,7 @@ export function AddReceiverForm({
     };
 
     try {
-      await addVerifiedReceiver(formData.receiverId, newReceiver);
+      await addVerifiedReceiver(newReceiver.receiverId, newReceiver);
       onAdd(newReceiver);
     } catch (err) {
       console.error("Error verifying receiver:", err);
@@ -140,6 +149,11 @@ export function AddReceiverForm({
     });
     onCancel();
   };
+
+  // Ensure the current receiverId is included in the dropdown options during edit
+  const receiverIdOptions = editingDevice
+    ? [...new Set([editingDevice.receiverId, ...unverifiedReceiverIds])].filter(Boolean)
+    : unverifiedReceiverIds;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -162,24 +176,13 @@ export function AddReceiverForm({
             onValueChange={(value) =>
               setFormData((prev) => ({ ...prev, receiverId: value }))
             }
-            disabled={!!editingDevice}
           >
             <SelectTrigger id="receiverId">
-              <SelectValue placeholder="Select unverified receiver Id..." />
+              <SelectValue placeholder="Select receiver Id..." />
             </SelectTrigger>
             <SelectContent>
-              {editingDevice ? (
-                formData.receiverId && formData.receiverId.trim() !== "" ? (
-                  <SelectItem key={formData.receiverId} value={formData.receiverId}>
-                    {formData.receiverId}
-                  </SelectItem>
-                ) : (
-                  <SelectItem disabled value="no-receiver-id">
-                    No receiver ID available
-                  </SelectItem>
-                )
-              ) : unverifiedReceiverIds.length > 0 ? (
-                unverifiedReceiverIds.map((id) => (
+              {receiverIdOptions.length > 0 ? (
+                receiverIdOptions.map((id) => (
                   <SelectItem key={id} value={id}>
                     {id}
                   </SelectItem>

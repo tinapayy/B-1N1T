@@ -129,8 +129,15 @@ export function AddSensorForm({
     e.preventDefault();
 
     const { sensorId, receiverId, latitude, longitude } = formData;
-    if (!sensorId || !receiverId || !latitude || !longitude) {
+
+    // In edit mode, make sensorId and receiverId optional
+    if (!editingDevice && (!sensorId || !receiverId || !latitude || !longitude)) {
       alert("Missing required fields.");
+      return;
+    }
+
+    if (editingDevice && (!latitude || !longitude)) {
+      alert("Missing required fields: latitude and longitude.");
       return;
     }
 
@@ -139,8 +146,10 @@ export function AddSensorForm({
     const newSensor = {
       name: formData.sensorName,
       location: formData.location,
-      sensorId: sensorId,
-      receiverId: receiverId,
+      // Use existing sensorId if formData.sensorId is empty during edit
+      sensorId: editingDevice && !formData.sensorId ? editingDevice.sensorId : sensorId,
+      // Use existing receiverId if formData.receiverId is empty during edit
+      receiverId: editingDevice && !formData.receiverId ? editingDevice.receiverId : receiverId,
       receiverName: receiver?.name || "(Unnamed Receiver)",
       registerDate:
         editingDevice?.registerDate ||
@@ -157,8 +166,8 @@ export function AddSensorForm({
     };
 
     try {
-      await addVerifiedSensor(sensorId, newSensor);
-      await updateReceiverSensorMapping(receiverId, sensorId);
+      await addVerifiedSensor(newSensor.sensorId, newSensor);
+      await updateReceiverSensorMapping(newSensor.receiverId, newSensor.sensorId);
       onAdd(newSensor);
     } catch (err) {
       console.error("Error verifying sensor:", err);
@@ -251,6 +260,11 @@ export function AddSensorForm({
     }))
   );
 
+  // Ensure the current sensorId is included in the dropdown options during edit
+  const sensorIdOptions = editingDevice
+    ? [...new Set([editingDevice.sensorId, ...unverifiedSensorIds])].filter(Boolean)
+    : unverifiedSensorIds;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -273,24 +287,13 @@ export function AddSensorForm({
             onValueChange={(value) =>
               setFormData((prev) => ({ ...prev, sensorId: value }))
             }
-            disabled={!!editingDevice}
           >
             <SelectTrigger id="sensorId">
-              <SelectValue placeholder="Select unverified sensor ID..." />
+              <SelectValue placeholder="Select sensor ID..." />
             </SelectTrigger>
             <SelectContent>
-              {editingDevice ? (
-                formData.sensorId && formData.sensorId.trim() !== "" ? (
-                  <SelectItem key={formData.sensorId} value={formData.sensorId}>
-                    {formData.sensorId}
-                  </SelectItem>
-                ) : (
-                  <SelectItem disabled value="no-sensor-id">
-                    No sensor ID available
-                  </SelectItem>
-                )
-              ) : unverifiedSensorIds.length > 0 ? (
-                unverifiedSensorIds.map((id) => (
+              {sensorIdOptions.length > 0 ? (
+                sensorIdOptions.map((id) => (
                   <SelectItem key={id} value={id}>
                     {id}
                   </SelectItem>
