@@ -1,3 +1,5 @@
+// analytics/analytics-line-chart.tsx
+
 "use client";
 
 import useSWR from "swr";
@@ -25,9 +27,11 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
+  TooltipProps,
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Download } from "lucide-react";
+import { convertToCSV, downloadCSV } from "@/lib/csv";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -63,10 +67,15 @@ export default function AnalyticsLineChart({
             typeof entry.avgHeatIndex === "number" &&
             typeof entry.avgTemp === "number"
         )
+        .sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        )
         .map((entry: any) => ({
           label: formatLabel(entry.timestamp, timeframe),
           heatIndex: entry.avgHeatIndex,
           temperature: entry.avgTemp,
+          isPartial: entry.isPartial ?? false,
         }))
     : [];
 
@@ -146,16 +155,40 @@ export default function AnalyticsLineChart({
               <Line
                 type="monotone"
                 dataKey="heatIndex"
-                stroke="var(--color-heatIndex)"
+                stroke={config.heatIndex.color}
                 strokeWidth={2}
-                dot={false}
+                dot={(props) =>
+                  props.payload?.isPartial ? (
+                    <circle
+                      {...props}
+                      r={4}
+                      stroke={config.heatIndex.color}
+                      fill="transparent"
+                      strokeDasharray="2 2"
+                    />
+                  ) : (
+                    <circle {...props} r={3} stroke="none" />
+                  )
+                }
               />
               <Line
                 type="monotone"
                 dataKey="temperature"
-                stroke="var(--color-temperature)"
+                stroke={config.temperature.color}
                 strokeWidth={2}
-                dot={false}
+                dot={(props) =>
+                  props.payload?.isPartial ? (
+                    <circle
+                      {...props}
+                      r={4}
+                      stroke={config.temperature.color}
+                      fill="transparent"
+                      strokeDasharray="2 2"
+                    />
+                  ) : (
+                    <circle {...props} r={3} stroke="none" />
+                  )
+                }
               />
             </LineChart>
           </ResponsiveContainer>
@@ -172,7 +205,16 @@ export default function AnalyticsLineChart({
               Temperature
             </span>
           </div>
-          <Button variant="outline" size="sm" className="text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={() => {
+              if (transformed.length === 0) return;
+              const csv = convertToCSV(transformed, ["label", "temperature", "heatIndex"]);
+              downloadCSV(csv, `analytics-${mappedTimeframe}.csv`);
+            }}
+          >
             <Download className="mr-2 h-4 w-4" /> Export Data
           </Button>
         </div>
