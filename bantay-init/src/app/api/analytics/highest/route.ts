@@ -1,4 +1,5 @@
 // File: /app/api/analytics/highest/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 
@@ -10,10 +11,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing sensorId parameter" }, { status: 400 });
   }
 
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const dd = String(today.getDate()).padStart(2, "0");
+  // Force date to PH time to construct correct Firestore docId
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000); // UTC+8
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
   const docId = `${sensorId}_${yyyy}-${mm}-${dd}`;
 
   try {
@@ -28,7 +30,7 @@ export async function GET(req: NextRequest) {
       temperature: data?.highestTemp ?? null,
       humidity: data?.highestHumidity ?? null,
       heatIndex: data?.highestHeatIndex ?? null,
-      timestamp: data?.timestamp?.toDate().toISOString() ?? null,
+      timestamp: data?.timestamp?.toDate?.().toISOString() ?? null,
     });
   } catch (err) {
     console.error("🔥 Failed to fetch daily high:", err);
