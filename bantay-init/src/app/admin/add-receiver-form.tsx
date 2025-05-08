@@ -11,7 +11,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-
 import {
   getUnverifiedReceiverIds,
   addVerifiedReceiver,
@@ -19,7 +18,7 @@ import {
 
 interface Receiver {
   id: number;
-  sensorName: string;
+  name: string;
   location: string;
   receiverId: string;
   connectedSensorIds?: string[];
@@ -27,7 +26,7 @@ interface Receiver {
   status: string;
   latitude?: string;
   longitude?: string;
-  wifiSSID?: string;
+  wifiSSId?: string;
   wifiPassword?: string;
 }
 
@@ -51,12 +50,12 @@ export function AddReceiverForm({
   existingReceivers,
 }: AddReceiverFormProps) {
   const [formData, setFormData] = useState({
-    receiverName: "",
+    name: "",
     receiverId: "",
     longitude: "",
     latitude: "",
     location: "",
-    wifiSSID: "",
+    wifiSSId: "",
     wifiPassword: "",
   });
 
@@ -73,12 +72,12 @@ export function AddReceiverForm({
   useEffect(() => {
     if (editingDevice) {
       setFormData({
-        receiverName: editingDevice.sensorName || "",
+        name: editingDevice.name || "",
         receiverId: editingDevice.receiverId || "",
         longitude: editingDevice.longitude || "",
         latitude: editingDevice.latitude || "",
         location: editingDevice.location || "",
-        wifiSSID: editingDevice.wifiSSID || "",
+        wifiSSId: editingDevice.wifiSSId || "",
         wifiPassword: editingDevice.wifiPassword || "",
       });
     }
@@ -109,17 +108,15 @@ export function AddReceiverForm({
     }
 
     const newReceiver = {
-      name: formData.receiverName.trim(),
-      receiverID: formData.receiverId,
+      name: formData.name.trim(),
+      receiverId: formData.receiverId,
       location: formData.location,
       longitude: parseFloat(formData.longitude),
       latitude: parseFloat(formData.latitude),
       connectedSensorIds: [],
-      wifiSSID: formData.wifiSSID,
+      wifiSSId: formData.wifiSSId,
       wifiPassword: formData.wifiPassword,
-      installDate:
-        editingDevice?.installDate ||
-        new Date().toISOString(),
+      installDate: editingDevice?.installDate || new Date().toISOString(),
       status: editingDevice?.status || "Offline",
     };
 
@@ -133,12 +130,12 @@ export function AddReceiverForm({
     }
 
     setFormData({
-      receiverName: "",
+      name: "",
       receiverId: "",
       longitude: "",
       latitude: "",
       location: "",
-      wifiSSID: "",
+      wifiSSId: "",
       wifiPassword: "",
     });
     onCancel();
@@ -148,10 +145,10 @@ export function AddReceiverForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label>Receiver Name</Label>
+          <Label htmlFor="name">Receiver Name</Label>
           <Input
-            name="receiverName"
-            value={formData.receiverName}
+            name="name"
+            value={formData.name}
             onChange={handleChange}
             placeholder="RCV-01"
             required
@@ -159,25 +156,36 @@ export function AddReceiverForm({
         </div>
 
         <div className="space-y-2">
-          <Label>Receiver ID</Label>
+          <Label htmlFor="receiverId">Receiver Id</Label>
           <Select
             value={formData.receiverId}
             onValueChange={(value) =>
               setFormData((prev) => ({ ...prev, receiverId: value }))
             }
+            disabled={!!editingDevice}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select unverified receiver ID..." />
+            <SelectTrigger id="receiverId">
+              <SelectValue placeholder="Select unverified receiver Id..." />
             </SelectTrigger>
             <SelectContent>
-              {unverifiedReceiverIds.length > 0 ? (
+              {editingDevice ? (
+                formData.receiverId && formData.receiverId.trim() !== "" ? (
+                  <SelectItem key={formData.receiverId} value={formData.receiverId}>
+                    {formData.receiverId}
+                  </SelectItem>
+                ) : (
+                  <SelectItem disabled value="no-receiver-id">
+                    No receiver ID available
+                  </SelectItem>
+                )
+              ) : unverifiedReceiverIds.length > 0 ? (
                 unverifiedReceiverIds.map((id) => (
                   <SelectItem key={id} value={id}>
                     {id}
                   </SelectItem>
                 ))
               ) : (
-                <SelectItem disabled value="none">
+                <SelectItem disabled value="no-unverified-receivers">
                   No unverified receivers
                 </SelectItem>
               )}
@@ -186,17 +194,18 @@ export function AddReceiverForm({
         </div>
 
         <div className="space-y-2">
-          <Label>Wi-Fi SSID</Label>
+          <Label htmlFor="wifiSSId">Wi-Fi SSId</Label>
           <Input
-            name="wifiSSID"
-            value={formData.wifiSSID}
+            name="wifiSSId"
+            value={formData.wifiSSId}
             onChange={handleChange}
-            placeholder="Enter SSID"
+            placeholder="Enter SSId"
             required
           />
         </div>
+
         <div className="space-y-2">
-          <Label>Wi-Fi Password</Label>
+          <Label htmlFor="wifiPassword">Wi-Fi Password</Label>
           <Input
             name="wifiPassword"
             value={formData.wifiPassword}
@@ -208,7 +217,7 @@ export function AddReceiverForm({
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label>Location</Label>
+          <Label htmlFor="location">Location</Label>
           <Input
             value={formData.location}
             readOnly
@@ -217,7 +226,7 @@ export function AddReceiverForm({
         </div>
 
         <div className="space-y-2">
-          <Label>Longitude</Label>
+          <Label htmlFor="longitude">Longitude</Label>
           <Input
             value={formData.longitude}
             readOnly
@@ -226,7 +235,7 @@ export function AddReceiverForm({
         </div>
 
         <div className="space-y-2">
-          <Label>Latitude</Label>
+          <Label htmlFor="latitude">Latitude</Label>
           <Input
             value={formData.latitude}
             readOnly

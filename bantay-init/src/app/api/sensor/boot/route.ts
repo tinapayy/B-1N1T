@@ -22,8 +22,8 @@ export async function POST(req: Request) {
 
     if (!existing.exists()) {
       await setDoc(ref, {
-        sensorID: sensorId,
-        receiverID: receiverId || null,
+        sensorId: sensorId,
+        receiverId: receiverId || null,
         status: "Unverified",
         firstSeen: serverTimestamp(),
         notes: "First boot auto-entry. Awaiting verification."

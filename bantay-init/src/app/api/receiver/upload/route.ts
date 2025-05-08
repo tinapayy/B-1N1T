@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
     const sensorDoc = await adminDb.collection("verified_sensors").doc(sensorId).get();
     if (!sensorDoc.exists) {
-      return NextResponse.json({ error: "Invalid sensor ID" }, { status: 403 });
+      return NextResponse.json({ error: "Invalid sensor Id" }, { status: 403 });
     }
 
     const rawTimestamp = body.__mockTimestamp || Date.now();
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
           : null;
     
       const updatePayload = {
-        sensorID: sensorId,
+        sensorId: sensorId,
         ...scope,
         dataPointCount: count,
         minTemp: Math.min(existing.minTemp ?? temperature, temperature),

@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
     if (!snap.exists()) {
       await setDoc(ref, {
-        receiverID: receiverId,
+        receiverId: receiverId,
         macAddress: mac || "N/A",
         createdAt: serverTimestamp(),
         status: "Unverified",

@@ -48,7 +48,6 @@ import {
 // Dynamically load map widget
 const MapWidget = dynamic(() => import("./map-widget").then(mod => mod.MapWidget), { ssr: false });
 
-
 export default function AdminDashboard() {
   const router = useRouter();
   const { setIsMobileMenuOpen } = useSidebar();
@@ -74,14 +73,14 @@ export default function AdminDashboard() {
         getVerifiedSensors(),
         getVerifiedReceivers(),
       ]);
+      console.log("Fetched Sensors:", sensorData);
+      console.log("Fetched Receivers:", receiverData);
       setSensors(sensorData);
       setReceivers(receiverData);
     };
     fetchData();
   }, []);
-  
 
-  // UseEffect redirect AFTER all hooks are initialized
   useEffect(() => {
     if (!authLoading && !isAdmin) {
       router.replace("/dashboard");
@@ -108,7 +107,7 @@ export default function AdminDashboard() {
       location.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
-  
+
   const filteredReceivers = receivers.filter((receiver) => {
     const name = typeof receiver.name === "string" ? receiver.name : "";
     const location = typeof receiver.location === "string" ? receiver.location : "";
@@ -117,7 +116,6 @@ export default function AdminDashboard() {
       location.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
-  
 
   const handleAddDevice = (newDevice: any) => {
     if (formType === "sensor") {
@@ -130,8 +128,7 @@ export default function AdminDashboard() {
           )
         );
       } else {
-        setSensors((prev) => [...prev, { ...newDevice, id: newDevice.sensorID || newDevice.receiverID
-        }]);
+        setSensors((prev) => [...prev, { ...newDevice, id: newDevice.sensorId || newDevice.receiverId }]);
       }
     } else {
       if (editingDevice) {
@@ -149,7 +146,6 @@ export default function AdminDashboard() {
         ]);
       }
     }
-
     setEditingDevice(null);
     setSelectedLocation(null);
   };
@@ -167,15 +163,26 @@ export default function AdminDashboard() {
       console.error("Delete failed:", err);
       alert("Failed to delete device. See console for details.");
     }
-  };  
+  };
 
   const handleEditDevice = (device: any) => {
+    console.log("Editing device:", device);
+    if (
+      !device ||
+      (formType === "sensor" && (!device.sensorId || device.sensorId.trim() === "")) ||
+      (formType === "receiver" && (!device.receiverId || device.receiverId.trim() === ""))
+    ) {
+      console.warn("Invalid device data for editing:", device);
+      setEditingDevice(null);
+      setSelectedLocation(null);
+      return;
+    }
     setEditingDevice(device);
     setFormType(deviceTab === "sensors" ? "sensor" : "receiver");
     setSelectedLocation({
       lat: Number.parseFloat(device.latitude || "10.7202"),
       lng: Number.parseFloat(device.longitude || "122.5621"),
-      address: device.location,
+      address: device.location || "",
     });
   };
 
@@ -199,7 +206,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-[var(--dark-gray-1)] rounded-lg">
         <h1 className="text-xl md:text-2xl font-bold">Admin Dashboard</h1>
         <div className="flex w-full md:w-auto gap-2">
@@ -239,7 +245,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Device Tabs */}
       <Tabs defaultValue="sensors" value={deviceTab} onValueChange={handleTabChange} className="mt-2">
         <TabsList className="mb-4 justify-start overflow-x-auto">
           <TabsTrigger value="sensors">Sensors</TabsTrigger>
@@ -275,7 +280,6 @@ export default function AdminDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Form + Map Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <SuspenseCard>
           <Card>
@@ -304,6 +308,7 @@ export default function AdminDashboard() {
                   editingDevice={editingDevice}
                   onCancel={() => setEditingDevice(null)}
                   existingSensors={sensors}
+                  existingReceivers={receivers}
                 />
               ) : (
                 <AddReceiverForm
