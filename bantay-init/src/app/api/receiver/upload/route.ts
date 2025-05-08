@@ -1,5 +1,3 @@
-// /api/receiver/upload/route.ts
-
 import { NextResponse } from "next/server";
 import { adminDb, adminRtdb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
@@ -41,8 +39,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid sensor ID" }, { status: 403 });
     }
 
-    const timestamp = Date.now();
-    const now = new Date();
+    const rawTimestamp = body.__mockTimestamp || Date.now();
+    const timestamp = typeof rawTimestamp === "number" ? rawTimestamp : Date.now();
+    const now = new Date(timestamp);
 
     const summaryId = getTodayKey(sensorId);
     const summaryRef = adminDb.collection("summaries").doc(summaryId);
@@ -54,8 +53,15 @@ export async function POST(req: Request) {
     weekStart.setUTCDate(now.getUTCDate() - now.getUTCDay() + 1);
     weekStart.setUTCHours(0, 0, 0, 0);
 
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    monthStart.setUTCHours(0, 0, 0, 0);
     const isoMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const isCurrentMonth = now.getMonth() === new Date().getMonth() && now.getFullYear() === new Date().getFullYear();
+
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    yearStart.setUTCHours(0, 0, 0, 0);
     const isoYear = `${now.getFullYear()}`;
+    const isCurrentYear = now.getFullYear() === new Date().getFullYear();
 
     const weeklyRef = adminDb.collection("analytics_weekly_summary").doc(`${sensorId}_${isoWeek}`);
     const monthlyRef = adminDb.collection("analytics_monthly_summary").doc(`${sensorId}_${isoMonth}`);
@@ -71,25 +77,40 @@ export async function POST(req: Request) {
     const monthlyData = monthlySnap.exists ? monthlySnap.data() ?? {} : {};
     const yearlyData = yearlySnap.exists ? yearlySnap.data() ?? {} : {};
 
-    const writeSummary = (ref: any, existing: any, count: number, scope: any) =>
-      ref.set(
-        {
-          sensorID: sensorId,
-          ...scope,
-          sampleCount: count,
-          minTemp: Math.min(existing.minTemp ?? temperature, temperature),
-          maxTemp: Math.max(existing.maxTemp ?? temperature, temperature),
-          minHumidity: Math.min(existing.minHumidity ?? humidity, humidity),
-          maxHumidity: Math.max(existing.maxHumidity ?? humidity, humidity),
-          minHeatIndex: Math.min(existing.minHeatIndex ?? heatIndex, heatIndex),
-          maxHeatIndex: Math.max(existing.maxHeatIndex ?? heatIndex, heatIndex),
-          totalHumidity: (existing.totalHumidity || 0) + humidity,
-          averageHumidity: parseFloat(
-            (((existing.totalHumidity || 0) + humidity) / count).toFixed(2)
-          ),
-        },
-        { merge: true }
-      );
+    const writeSummary = (ref: any, existing: any, count: number, scope: any) => {
+      // remove undefined values
+      const isPartial =
+        typeof scope.isoMonth !== "undefined"
+          ? isCurrentMonth
+          : typeof scope.isoYear !== "undefined"
+          ? isCurrentYear
+          : null;
+    
+      const updatePayload = {
+        sensorID: sensorId,
+        ...scope,
+        dataPointCount: count,
+        minTemp: Math.min(existing.minTemp ?? temperature, temperature),
+        maxTemp: Math.max(existing.maxTemp ?? temperature, temperature),
+        minHumidity: Math.min(existing.minHumidity ?? humidity, humidity),
+        maxHumidity: Math.max(existing.maxHumidity ?? humidity, humidity),
+        minHeatIndex: Math.min(existing.minHeatIndex ?? heatIndex, heatIndex),
+        maxHeatIndex: Math.max(existing.maxHeatIndex ?? heatIndex, heatIndex),
+        totalHumidity: (existing.totalHumidity || 0) + humidity,
+        averageHumidity: parseFloat(
+          (((existing.totalHumidity || 0) + humidity) / count).toFixed(2)
+        ),
+        alertCount:
+          heatIndex >= 32 ? (existing.alertCount || 0) + 1 : existing.alertCount || 0,
+      };
+    
+      if (isPartial !== null) {
+        (updatePayload as any).isPartial = isPartial;
+      }
+    
+      return ref.set(updatePayload, { merge: true });
+    };
+  
 
     const alertWrite =
       heatIndex >= 32
@@ -175,8 +196,7 @@ export async function POST(req: Request) {
               : heatIndex >= 32
               ? "Extreme Caution"
               : "Safe",
-              peakHeatIndex: Math.max(existing.peakHeatIndex ?? 0, heatIndex)
-              ,
+          peakHeatIndex: Math.max(existing.peakHeatIndex ?? 0, heatIndex),
         },
         { merge: true }
       );
@@ -187,9 +207,18 @@ export async function POST(req: Request) {
       summaryWrite,
       dailyHighsWrite,
       latestWrite,
-      writeSummary(weeklyRef, weeklyData, (weeklyData.sampleCount || 0) + 1, { isoWeek, weekStart }),
-      writeSummary(monthlyRef, monthlyData, (monthlyData.sampleCount || 0) + 1, { isoMonth }),
-      writeSummary(yearlyRef, yearlyData, (yearlyData.sampleCount || 0) + 1, { isoYear }),
+      writeSummary(weeklyRef, weeklyData, (weeklyData.dataPointCount || 0) + 1, {
+        isoWeek,
+        weekStart: Timestamp.fromDate(weekStart)
+      }),
+      writeSummary(monthlyRef, monthlyData, (monthlyData.dataPointCount || 0) + 1, {
+        isoMonth,
+        monthStart: Timestamp.fromDate(monthStart)
+      }),
+      writeSummary(yearlyRef, yearlyData, (yearlyData.dataPointCount || 0) + 1, {
+        isoYear,
+        yearStart: Timestamp.fromDate(yearStart)
+      }),
     ]);
 
     return response;
