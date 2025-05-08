@@ -26,7 +26,7 @@ interface Receiver {
   status: string;
   latitude?: string;
   longitude?: string;
-  wifiSSId?: string;
+  wifiSSID?: string;
   wifiPassword?: string;
 }
 
@@ -55,7 +55,7 @@ export function AddReceiverForm({
     longitude: "",
     latitude: "",
     location: "",
-    wifiSSId: "",
+    wifiSSID: "",
     wifiPassword: "",
   });
 
@@ -77,7 +77,7 @@ export function AddReceiverForm({
         longitude: editingDevice.longitude || "",
         latitude: editingDevice.latitude || "",
         location: editingDevice.location || "",
-        wifiSSId: editingDevice.wifiSSId || "",
+        wifiSSID: editingDevice.wifiSSID || "",
         wifiPassword: editingDevice.wifiPassword || "",
       });
     }
@@ -123,7 +123,7 @@ export function AddReceiverForm({
       longitude: parseFloat(formData.longitude),
       latitude: parseFloat(formData.latitude),
       connectedSensorIds: [],
-      wifiSSId: formData.wifiSSId,
+      wifiSSID: formData.wifiSSID,
       wifiPassword: formData.wifiPassword,
       installDate: editingDevice?.installDate || new Date().toISOString(),
       status: editingDevice?.status || "Offline",
@@ -144,7 +144,7 @@ export function AddReceiverForm({
       longitude: "",
       latitude: "",
       location: "",
-      wifiSSId: "",
+      wifiSSID: "",
       wifiPassword: "",
     });
     onCancel();
@@ -197,12 +197,12 @@ export function AddReceiverForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="wifiSSId">Wi-Fi SSId</Label>
+          <Label htmlFor="wifiSSID">Wi-Fi SSID</Label>
           <Input
-            name="wifiSSId"
-            value={formData.wifiSSId}
+            name="wifiSSID"
+            value={formData.wifiSSID}
             onChange={handleChange}
-            placeholder="Enter SSId"
+            placeholder="Enter SSID"
             required
           />
         </div>
