@@ -35,7 +35,7 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
 
   const getAlertColor = (heatIndex: number) => {
     if (heatIndex < 27) return "#00A65A";
-    if (heatIndex < 32) return "#FFFF00";
+    if (heatIndex < 32) return "#FFD700";
     if (heatIndex < 41) return "#FFB029";
     if (heatIndex < 51) return "#FF7123";
     return "#CD0201";
