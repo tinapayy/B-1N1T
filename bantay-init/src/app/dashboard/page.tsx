@@ -51,7 +51,7 @@ export default function Dashboard() {
                   <NotificationDropdown />
                 </div>
               </div>
-              <WeatherGauge sensorId="SENSOR_002" />
+              <WeatherGauge sensorId="SENSOR_001" />
               </CardContent>
           </Card>
         </SuspenseCard>
