@@ -20,38 +20,40 @@ import {
 import { Button } from "@/components/ui/button";
 
 // Sample notification data - replace with actual data later
-const sampleNotifications = [
-  {
-    id: 1,
-    type: "danger",
-    message: "Heat index reached 47°C in Miagao, Iloilo",
-    time: "10 minutes ago",
-  },
-  {
-    id: 2,
-    type: "warning",
-    message: "Extreme caution: Heat index at 38°C in Jaro, Iloilo",
-    time: "1 hour ago",
-  },
-  {
-    id: 3,
-    type: "info",
-    message: "New sensor added to your subscriptions",
-    time: "Yesterday",
-  },
-  {
-    id: 4,
-    type: "danger",
-    message: "Heat index at 45°C in Oton, Iloilo",
-    time: "2 hours ago",
-  },
-  {
-    id: 5,
-    type: "info",
-    message: "System maintenance scheduled for tomorrow",
-    time: "3 hours ago",
-  },
-];
+const sampleNotifications =
+  [
+    {
+      id: 1,
+      type: "danger",
+      message: "Heat index reached 45.8°C at Miagao Elementary School",
+      time: "Just now",
+    },
+    {
+      id: 2,
+      type: "danger",
+      message: "Heat index spiked to 44.1°C at St. Louise de Marillac School of Miagao",
+      time: "5 minutes ago",
+    },
+    {
+      id: 3,
+      type: "warning",
+      message: "Heat index at 42.3°C near Daja Crossing, Miagao",
+      time: "10 minutes ago",
+    },
+    {
+      id: 4,
+      type: "warning",
+      message: "Heat index at 41.7°C near Tacas Zone, Miagao",
+      time: "20 minutes ago",
+    },
+    {
+      id: 5,
+      type: "info",
+      message: "Sensor SENSOR_003 has been subscribed successfully",
+      time: "30 minutes ago",
+    }
+  ]
+  
 
 export function NotificationDropdown() {
   const [notifications, setNotifications] = useState(sampleNotifications);
