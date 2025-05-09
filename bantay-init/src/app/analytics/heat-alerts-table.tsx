@@ -1,5 +1,3 @@
-// analytics/heat-alerts-table.tsx
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -31,10 +29,17 @@ export default function HeatAlertTable({
   alerts: any[];
   selectedAlertType: string;
   setSelectedAlertType: (val: string) => void;
+  selectedHeatIndex?: string;
+  setSelectedHeatIndex?: (val: string) => void;
   selectedDateRange: string;
   setSelectedDateRange: (val: string) => void;
 }) {
-  const alertTypeOptions = ["All Types", "Danger", "Extreme Caution", "Extreme Danger"];
+  const alertTypeOptions = [
+    "All Types",
+    "Danger",
+    "Extreme Caution",
+    "Extreme Danger",
+  ];
   const dateOptions = ["Today", "This Week", "This Month"];
 
   const [filteredAlerts, setFilteredAlerts] = useState<any[]>([]);
@@ -80,8 +85,14 @@ export default function HeatAlertTable({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (showMobileFilters && filterRef.current && !filterRef.current.contains(e.target as Node)) {
-        const dropdownContent = document.querySelector("[data-radix-popper-content-wrapper]");
+      if (
+        showMobileFilters &&
+        filterRef.current &&
+        !filterRef.current.contains(e.target as Node)
+      ) {
+        const dropdownContent = document.querySelector(
+          "[data-radix-popper-content-wrapper]"
+        );
         if (dropdownContent?.contains(e.target as Node)) return;
         setShowMobileFilters(false);
         setOpenDropdown(null);
@@ -129,13 +140,24 @@ export default function HeatAlertTable({
   ];
 
   return (
-    <Card className="bg-white rounded-3xl shadow-sm flex flex-col h-full">
+    <Card className="bg-white rounded-3xl shadow-sm flex flex-col h-[380px]">
       <CardHeader className="px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xl font-semibold">Extreme Heat Alerts</CardTitle>
+          <CardTitle className="text-xl font-semibold">
+            Extreme Heat Alerts
+          </CardTitle>
           <div className="sm:hidden">
-            <Button variant="ghost" size="icon" onClick={() => setShowMobileFilters((p) => !p)} className="h-8 w-8">
-              <SlidersHorizontal className={`w-5 h-5 transform duration-200 ${showMobileFilters ? "rotate-90" : ""}`} />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowMobileFilters((p) => !p)}
+              className="h-8 w-8"
+            >
+              <SlidersHorizontal
+                className={`w-5 h-5 transform duration-200 ${
+                  showMobileFilters ? "rotate-90" : ""
+                }`}
+              />
             </Button>
           </div>
         </div>
@@ -144,19 +166,32 @@ export default function HeatAlertTable({
       <CardContent className="pb-4 flex-grow flex flex-col">
         <div
           ref={filterRef}
-          className={`flex flex-wrap gap-2 mb-4 pb-2 ${showMobileFilters ? "block" : "hidden"} sm:flex`}
+          className={`flex flex-wrap gap-2 mb-4 pb-2 ${
+            showMobileFilters ? "block" : "hidden"
+          } sm:flex`}
         >
           {filters.map(({ value, setter, options, id }) => (
-            <DropdownMenu key={id} open={openDropdown === id} onOpenChange={(o) => setOpenDropdown(o ? id : null)}>
+            <DropdownMenu
+              key={id}
+              open={openDropdown === id}
+              onOpenChange={(o) => setOpenDropdown(o ? id : null)}
+            >
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="text-xs h-8 truncate">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-8 truncate"
+                >
                   {value}
                   <ChevronDown className="ml-1 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 {options.map((option) => (
-                  <DropdownMenuItem key={option} onSelect={() => setter(option)}>
+                  <DropdownMenuItem
+                    key={option}
+                    onSelect={() => setter(option)}
+                  >
                     {option}
                   </DropdownMenuItem>
                 ))}
@@ -165,55 +200,151 @@ export default function HeatAlertTable({
           ))}
         </div>
 
-        {/* Add scroll + max height */}
-        <div className="overflow-y-auto flex-grow max-h-[320px]">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead onClick={() => handleSort("alertType")} className="cursor-pointer w-1/3 py-2">
+        <div className="overflow-y-auto flex-grow max-h-[250px]">
+          {isMobile ? (
+            <>
+              <div className="flex justify-between mb-3 px-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("alertType")}
+                  className="text-xs"
+                >
                   Type {getSortIcon("alertType")}
-                </TableHead>
-                <TableHead onClick={() => handleSort("heatIndex")} className="text-center cursor-pointer py-2">
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("heatIndex")}
+                  className="text-xs"
+                >
                   Heat Index {getSortIcon("heatIndex")}
-                </TableHead>
-                <TableHead onClick={() => handleSort("timestamp")} className="text-right cursor-pointer py-2">
-                  Date & Time {getSortIcon("timestamp")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAlerts.length > 0 ? (
-                filteredAlerts.map((alert) => (
-                  <TableRow key={`${alert.timestamp}-${alert.sensorId}-${alert.heatIndex}`} className="hover:bg-muted/50">
-                    <TableCell className="py-2">
-                      <div className="flex items-center">
-                        <div
-                          className={`h-3 w-3 rounded-full mr-2 ${
-                            alert.alertType === "Danger"
-                              ? "bg-[var(--orange-primary)]"
-                              : alert.alertType === "Extreme Caution"
-                              ? "bg-yellow-500"
-                              : "bg-red-600"
-                          }`}
-                        />
-                        {alert.alertType}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("timestamp")}
+                  className="text-xs"
+                >
+                  Date {getSortIcon("timestamp")}
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {filteredAlerts.length > 0 ? (
+                  filteredAlerts.map((alert, index) => (
+                    <Card
+                      key={`${alert.timestamp}-${index}`}
+                      className="p-3 shadow-sm hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className={`h-3 w-3 rounded-full ${
+                              alert.alertType === "Danger"
+                                ? "bg-[var(--orange-primary)]"
+                                : alert.alertType === "Extreme Caution"
+                                ? "bg-yellow-500"
+                                : "bg-red-600"
+                            }`}
+                          />
+                          <span className="font-medium">{alert.alertType}</span>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {alert.heatIndex}°C
+                        </span>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-center">{alert.heatIndex}°C</TableCell>
-                    <TableCell className="text-right text-gray-500">
-                      {new Date(alert.timestamp).toLocaleString('en-US')}
+                      <div className="mt-1 text-sm text-gray-500">
+                        {new Date(alert.timestamp).toLocaleString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      </div>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    No alerts match your filters
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead
+                    onClick={() => handleSort("alertType")}
+                    className="cursor-pointer w-1/3 py-2"
+                  >
+                    Type {getSortIcon("alertType")}
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort("heatIndex")}
+                    className="text-center cursor-pointer py-2"
+                  >
+                    Heat Index {getSortIcon("heatIndex")}
+                  </TableHead>
+                  <TableHead
+                    onClick={() => handleSort("timestamp")}
+                    className="text-right cursor-pointer py-2"
+                  >
+                    Date & Time {getSortIcon("timestamp")}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAlerts.length > 0 ? (
+                  filteredAlerts.map((alert, index) => (
+                    <TableRow
+                      key={`${alert.timestamp}-${index}`}
+                      className="hover:bg-muted/50"
+                    >
+                      <TableCell className="py-2">
+                        <div className="flex items-center">
+                          <div
+                            className={`h-3 w-3 rounded-full mr-2 ${
+                              alert.alertType === "Danger"
+                                ? "bg-[var(--orange-primary)]"
+                                : alert.alertType === "Extreme Caution"
+                                ? "bg-yellow-500"
+                                : "bg-red-600"
+                            }`}
+                          />
+                          {alert.alertType}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {alert.heatIndex}°C
+                      </TableCell>
+                      <TableCell className="text-right text-gray-500">
+                        {new Date(alert.timestamp).toLocaleString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="text-center py-4 text-gray-500"
+                    >
+                      No alerts match your filters
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center py-4 text-gray-500">
-                    No alerts match your filters
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </CardContent>
     </Card>

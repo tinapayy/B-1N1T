@@ -40,16 +40,23 @@ export async function POST(req: Request) {
     const { sensorId, temperature, humidity, heatIndex, receiverId } = body;
 
     if (!sensorId || typeof sensorId !== "string") {
-      return NextResponse.json({ error: "Missing or invalid sensorId" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing or invalid sensorId" },
+        { status: 400 }
+      );
     }
 
-    const sensorDoc = await adminDb.collection("verified_sensors").doc(sensorId).get();
+    const sensorDoc = await adminDb
+      .collection("verified_sensors")
+      .doc(sensorId)
+      .get();
     if (!sensorDoc.exists) {
       return NextResponse.json({ error: "Invalid sensor ID" }, { status: 403 });
     }
 
     const rawTimestamp = body.__mockTimestamp || Date.now();
-    const timestamp = typeof rawTimestamp === "number" ? rawTimestamp : Date.now();
+    const timestamp =
+      typeof rawTimestamp === "number" ? rawTimestamp : Date.now();
     const now = new Date(timestamp);
 
     const summaryId = getTodayKey(sensorId);
@@ -64,17 +71,27 @@ export async function POST(req: Request) {
 
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     monthStart.setUTCHours(0, 0, 0, 0);
-    const isoMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const isCurrentMonth = now.getMonth() === new Date().getMonth() && now.getFullYear() === new Date().getFullYear();
+    const isoMonth = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}`;
+    const isCurrentMonth =
+      now.getMonth() === new Date().getMonth() &&
+      now.getFullYear() === new Date().getFullYear();
 
     const yearStart = new Date(now.getFullYear(), 0, 1);
     yearStart.setUTCHours(0, 0, 0, 0);
     const isoYear = `${now.getFullYear()}`;
     const isCurrentYear = now.getFullYear() === new Date().getFullYear();
 
-    const weeklyRef = adminDb.collection("analytics_weekly_summary").doc(`${sensorId}_${isoWeek}`);
-    const monthlyRef = adminDb.collection("analytics_monthly_summary").doc(`${sensorId}_${isoMonth}`);
-    const yearlyRef = adminDb.collection("analytics_yearly_summary").doc(`${sensorId}_${isoYear}`);
+    const weeklyRef = adminDb
+      .collection("analytics_weekly_summary")
+      .doc(`${sensorId}_${isoWeek}`);
+    const monthlyRef = adminDb
+      .collection("analytics_monthly_summary")
+      .doc(`${sensorId}_${isoMonth}`);
+    const yearlyRef = adminDb
+      .collection("analytics_yearly_summary")
+      .doc(`${sensorId}_${isoYear}`);
 
     const [weeklySnap, monthlySnap, yearlySnap] = await Promise.all([
       weeklyRef.get(),
@@ -250,6 +267,9 @@ export async function POST(req: Request) {
     return response;
   } catch (error) {
     console.error("/api/receiver/upload error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

@@ -1,5 +1,4 @@
-// /src/app/api/analytics/bar-summary/route.ts
-
+// /app/api/analytics/bar-summary/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
@@ -7,60 +6,68 @@ import { Timestamp } from "firebase-admin/firestore";
 const metricFieldMap: Record<string, { min: string; max: string }> = {
   temperature: { min: "minTemp", max: "maxTemp" },
   humidity: { min: "minHumidity", max: "maxHumidity" },
-  heatIndex: { min: "minHeatIndex", max: "maxHeatIndex" },
+  heatindex: { min: "minHeatIndex", max: "maxHeatIndex" },
 };
 
-const dayLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const dayLabels = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+function getTrailing7Days(endDate: Date): { dateStr: string; label: string }[] {
+  const result: { dateStr: string; label: string }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(endDate);
+    d.setDate(d.getDate() - i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const label = dayLabels[d.getDay()];
+    result.push({ dateStr, label });
+  }
+  return result;
+}
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const sensorId = searchParams.get("sensorId");
-  const metric = searchParams.get("metric")?.toLowerCase();
+  try {
+    const { searchParams } = new URL(req.url);
+    const sensorId = searchParams.get("sensorId");
+    const metric = searchParams.get("metric")?.toLowerCase();
 
-  if (!sensorId || !metric || !(metric in metricFieldMap)) {
-    return NextResponse.json({ error: "Missing or invalid parameters" }, { status: 400 });
-  }
-
-  const now = new Date(Date.now() + 8 * 60 * 60 * 1000); // UTC+8
-  const dayOffset = (now.getUTCDay() + 6) % 7; // Monday-start
-  const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dayOffset));
-  weekStart.setUTCHours(0, 0, 0, 0);
-
-  const snapshot = await adminDb
-    .collection("analytics_daily_highs")
-    .where("sensorID", "==", sensorId)
-    .where("timestamp", ">=", Timestamp.fromDate(weekStart))
-    .get();
-
-  const rawDocs = snapshot.docs.map((doc) => doc.data());
-
-  const dataByIndex: Record<number, { min: number; max: number }> = {};
-
-  for (const doc of rawDocs) {
-    const ts = doc.timestamp?.toDate?.();
-    if (!ts) continue;
-
-    const local = new Date(ts.getTime() + 8 * 60 * 60 * 1000); // convert to UTC+8
-    const dayIndex = (local.getUTCDay() + 6) % 7; // 0 = MON, ..., 6 = SUN
-
-    const min = doc[metricFieldMap[metric].min];
-    const max = doc[metricFieldMap[metric].max];
-
-    if (typeof min === "number" && typeof max === "number") {
-      dataByIndex[dayIndex] = { min, max };
+    if (!sensorId || !metric || !(metric in metricFieldMap)) {
+      return NextResponse.json(
+        { error: "Missing or invalid params" },
+        { status: 400 }
+      );
     }
+
+    const { min: minField, max: maxField } = metricFieldMap[metric];
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const targetDays = getTrailing7Days(today);
+
+    const docIds = targetDays.map(({ dateStr }) => `${sensorId}_${dateStr}`);
+    const docRefs = docIds.map((id) =>
+      adminDb.collection("analytics_min_max_summary").doc(id)
+    );
+
+    const docs = await adminDb.getAll(...docRefs);
+
+    const data = docs.map((snap, index) => {
+      const { label, dateStr } = targetDays[index];
+      const d = snap.exists ? snap.data() || {} : {};
+      const min = d[minField] ?? null;
+      const max = d[maxField] ?? null;
+
+      return {
+        day: label,
+        min,
+        delta: min !== null && max !== null ? max - min : 0,
+        isToday: dateStr === todayStr,
+      };
+    });
+
+    return NextResponse.json(data);
+  } catch (err) {
+    console.error("[bar-summary]", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
-
-  const chartData = dayLabels.map((label, index) => {
-    const entry = dataByIndex[index];
-    const min = entry?.min ?? 0;
-    const max = entry?.max ?? 0;
-    return {
-      day: label,
-      min,
-      delta: max - min,
-    };
-  });
-
-  return NextResponse.json(chartData);
 }
