@@ -8,71 +8,9 @@ import AnalyticsLineChart from "@/app/analytics/analytics-line-chart";
 import WeeklyBarChart from "@/app/analytics/weekly-bar-chart";
 import { useSidebar } from "@/components/providers/sidebar-provider";
 import { SuspenseCard } from "@/components/ui/suspense-card";
-import { LocationSearch } from "@/components/sections/location-search";
+import { AnalyticsSearch } from "@/components/sections/analytics-search";
 import { NotificationDropdown } from "@/components/sections/notification-dropdown";
-
-// Sample data for the charts
-const monthlyData = [
-  { month: "Jul", heatIndex: 2, temperature: 3 },
-  { month: "Aug", heatIndex: 3, temperature: 4 },
-  { month: "Sep", heatIndex: 4, temperature: 5 },
-  { month: "Oct", heatIndex: 5, temperature: 6 },
-  { month: "Nov", heatIndex: 3, temperature: 7 },
-  { month: "Dec", heatIndex: 6, temperature: 7 },
-  { month: "Jan", heatIndex: 7, temperature: 8 },
-  { month: "Feb", heatIndex: 8, temperature: 7 },
-];
-
-const weeklyData = [
-  { day: "MON", minTemp: 28, maxTemp: 45 },
-  { day: "TUE", minTemp: 30, maxTemp: 48 },
-  { day: "WED", minTemp: 27, maxTemp: 42 },
-  { day: "THU", minTemp: 25, maxTemp: 38 },
-  { day: "FRI", minTemp: 29, maxTemp: 44 },
-  { day: "SAT", minTemp: 31, maxTemp: 46 },
-  { day: "SUN", minTemp: 28, maxTemp: 43 },
-];
-
-const alertsData = [
-  {
-    id: 1,
-    type: "Danger",
-    heatIndex: "47°C",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-  {
-    id: 2,
-    type: "Extreme Caution",
-    heatIndex: "31°C",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-  {
-    id: 3,
-    type: "Extreme Danger",
-    heatIndex: "52°C",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-  {
-    id: 4,
-    type: "Danger",
-    heatIndex: "45°C",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-  {
-    id: 5,
-    type: "Extreme Caution",
-    heatIndex: "31",
-    dateTime: "12/24/2025 - 2:30 PM",
-  },
-];
-
-// Latest reading data
-const latestReading = {
-  temperature: 31,
-  humidity: 22,
-  heatIndex: 28,
-  timestamp: new Date().getTime(),
-};
+import { locationData } from "@/app/analytics/mock-data";
 
 export default function Analytics() {
   const { setIsMobileMenuOpen } = useSidebar();
@@ -80,7 +18,7 @@ export default function Analytics() {
   const [selectedAlertType, setSelectedAlertType] = useState("All Types");
   const [selectedHeatIndex, setSelectedHeatIndex] = useState("All Values");
   const [selectedDateRange, setSelectedDateRange] = useState("This Month");
-  const [location, setLocation] = useState("Miagao, Iloilo");
+  const [location, setLocation] = useState("Town Center, Miagao, Iloilo");
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
 
@@ -94,6 +32,18 @@ export default function Analytics() {
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
+  // Get data for the selected location
+  const currentData =
+    locationData[location as keyof typeof locationData] ||
+    locationData["Town Center, Miagao, Iloilo"];
+
+  // Calculate change since last month
+  const lastMonthIndex = currentData.monthlyData.length - 2; // April
+  const currentMonthIndex = currentData.monthlyData.length - 1; // May
+  const heatIndexChange =
+    currentData.monthlyData[currentMonthIndex].heatIndex -
+    currentData.monthlyData[lastMonthIndex].heatIndex;
+
   return (
     <div className="flex-1 overflow-auto p-4 lg:p-8 pb-8 lg:pb-8">
       {/* Location Search Card */}
@@ -105,9 +55,9 @@ export default function Analytics() {
           <CardContent className="p-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex-1">
-                <LocationSearch
+                <AnalyticsSearch
                   initialLocation={location}
-                  onLocationChange={(newLocation) => setLocation(newLocation)}
+                  onLocationChange={setLocation}
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -125,9 +75,9 @@ export default function Analytics() {
           className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-sm"
         >
           <AnalyticsLineChart
-            data={monthlyData}
             timeframe={selectedTimeframe}
             setTimeframe={setSelectedTimeframe}
+            location={location}
           />
         </SuspenseCard>
 
@@ -136,7 +86,7 @@ export default function Analytics() {
           height="min-h-[300px]"
           className="col-span-1 bg-white rounded-3xl shadow-sm"
         >
-          <HighestDailyRecords latest={latestReading} />
+          <HighestDailyRecords latest={currentData.latestReading} />
         </SuspenseCard>
       </div>
 
@@ -149,7 +99,9 @@ export default function Analytics() {
           <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
             <CardContent className="p-3 flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-xl font-bold">48</div>
+                <div className="text-xl font-bold">
+                  {currentData.alertsData.length}
+                </div>
                 <div className="text-[10px] leading-tight mt-1 px-1">
                   Monthly
                   <br />
@@ -167,7 +119,9 @@ export default function Analytics() {
           <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm h-full">
             <CardContent className="p-3 flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-xl font-bold">51°C</div>
+                <div className="text-xl font-bold">
+                  {currentData.latestReading.heatIndex}°C
+                </div>
                 <div className="text-[10px] leading-tight mt-1 px-1">
                   Peak
                   <br />
@@ -185,7 +139,7 @@ export default function Analytics() {
           <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
             <CardContent className="p-3 flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="text-xl font-bold">+2°C</div>
+                <div className="text-xl font-bold">+{heatIndexChange}°C</div>
                 <div className="text-[10px] leading-tight mt-1 px-1">
                   Change
                   <br />
@@ -208,7 +162,9 @@ export default function Analytics() {
             <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
               <CardContent className="p-4 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl font-bold">48</div>
+                  <div className="text-2xl sm:text-3xl font-bold">
+                    {currentData.alertsData.length}
+                  </div>
                   <div className="text-xs mt-1">Monthly Extreme Alerts</div>
                 </div>
               </CardContent>
@@ -222,7 +178,9 @@ export default function Analytics() {
             <Card className="bg-[var(--orange-primary)] text-white rounded-3xl shadow-sm h-full">
               <CardContent className="p-4 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl font-bold">51°C</div>
+                  <div className="text-2xl sm:text-3xl font-bold">
+                    {currentData.latestReading.heatIndex}°C
+                  </div>
                   <div className="text-xs mt-1 px-1 sm:px-0">
                     Peak Heat Index
                   </div>
@@ -238,7 +196,9 @@ export default function Analytics() {
             <Card className="bg-[var(--dark-gray-1)] text-white rounded-3xl shadow-sm h-full">
               <CardContent className="p-4 flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="text-2xl sm:text-3xl font-bold">+2°C</div>
+                  <div className="text-2xl sm:text-3xl font-bold">
+                    +{heatIndexChange}°C
+                  </div>
                   <div className="text-xs mt-1 px-1 sm:px-0">
                     Change Since Last Month
                   </div>
@@ -248,7 +208,7 @@ export default function Analytics() {
           </SuspenseCard>
         </div>
 
-        {/* Heat Alerts Table and Weekly Chart - Stack between 1028px and 1400px */}
+        {/* Heat Alerts Table and Weekly Chart */}
         <div className="col-span-12 lg:col-span-10 xl:grid xl:grid-cols-10 gap-4">
           <div className="xl:col-span-6 mb-4 xl:mb-0">
             <SuspenseCard
@@ -256,13 +216,13 @@ export default function Analytics() {
               className="bg-white rounded-3xl shadow-sm"
             >
               <HeatAlertTable
-                alerts={alertsData}
+                alerts={currentData.alertsData}
                 selectedAlertType={selectedAlertType}
                 setSelectedAlertType={setSelectedAlertType}
                 selectedHeatIndex={selectedHeatIndex}
                 setSelectedHeatIndex={setSelectedHeatIndex}
                 selectedDateRange={selectedDateRange}
-                setSelectedDateRange={setSelectedDateRange}
+                setSelectedDateRange={selectedDateRange}
               />
             </SuspenseCard>
           </div>
@@ -273,7 +233,7 @@ export default function Analytics() {
               className="bg-white rounded-3xl shadow-sm"
             >
               <WeeklyBarChart
-                data={weeklyData}
+                data={currentData.weeklyData}
                 isMobile={isMobile}
                 isTablet={isTablet}
               />

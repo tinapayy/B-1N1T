@@ -23,61 +23,74 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Download } from "lucide-react";
 import { useState, useEffect } from "react";
+import { locationData, historicalData } from "@/app/analytics/mock-data";
 
-// Sample data for different timeframes
-const weeklyData = [
-  { label: "Mon", heatIndex: 32, temperature: 30 },
-  { label: "Tue", heatIndex: 35, temperature: 32 },
-  { label: "Wed", heatIndex: 33, temperature: 31 },
-  { label: "Thu", heatIndex: 36, temperature: 33 },
-  { label: "Fri", heatIndex: 34, temperature: 32 },
-  { label: "Sat", heatIndex: 31, temperature: 29 },
-  { label: "Sun", heatIndex: 30, temperature: 28 },
-];
+interface AnalyticsLineChartProps {
+  timeframe: string;
+  setTimeframe: (timeframe: string) => void;
+  location: string;
+}
 
-const monthlyData = [
-  { label: "Jul", heatIndex: 32, temperature: 30 },
-  { label: "Aug", heatIndex: 33, temperature: 31 },
-  { label: "Sep", heatIndex: 34, temperature: 32 },
-  { label: "Oct", heatIndex: 35, temperature: 33 },
-  { label: "Nov", heatIndex: 33, temperature: 31 },
-  { label: "Dec", heatIndex: 36, temperature: 34 },
-  { label: "Jan", heatIndex: 37, temperature: 35 },
-  { label: "Feb", heatIndex: 38, temperature: 36 },
-];
+// Define the shape of the chart data
+interface ChartDataItem {
+  label: string;
+  heatIndex: number;
+  temperature: number;
+}
 
-const yearlyData = [
-  { label: "2018", heatIndex: 33, temperature: 31 },
-  { label: "2019", heatIndex: 34, temperature: 32 },
-  { label: "2020", heatIndex: 35, temperature: 33 },
-  { label: "2021", heatIndex: 36, temperature: 34 },
-  { label: "2022", heatIndex: 37, temperature: 35 },
-  { label: "2023", heatIndex: 38, temperature: 36 },
-  { label: "2024", heatIndex: 39, temperature: 37 },
-];
-
-export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
-  const [chartData, setChartData] = useState(monthlyData);
+export default function AnalyticsLineChart({
+  timeframe,
+  setTimeframe,
+  location,
+}: AnalyticsLineChartProps) {
+  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
 
   useEffect(() => {
+    // Get data for the selected location
+    const data =
+      locationData[location as keyof typeof locationData] ||
+      locationData["Town Center, Miagao, Iloilo"];
+
+    // Map data to chart format
+    const mappedData = {
+      weekly: data.weeklyData.map((item) => ({
+        label: item.day,
+        heatIndex: item.maxTemp,
+        temperature: item.minTemp + (item.maxTemp - item.minTemp) / 2, // Average for simplicity
+      })),
+      monthly: data.monthlyData.map((item) => ({
+        label: item.month,
+        heatIndex: item.heatIndex,
+        temperature: item.temperature,
+      })),
+      yearly: data.yearlyData.map((item) => ({
+        label: item.year,
+        heatIndex: item.heatIndex,
+        temperature: item.temperature,
+      })),
+    };
+
     switch (timeframe) {
       case "Weekly":
-        setChartData(weeklyData);
+        setChartData(mappedData.weekly);
         break;
       case "Monthly":
-        setChartData(monthlyData);
+        setChartData(mappedData.monthly);
         break;
       case "Yearly":
-        setChartData(yearlyData);
+        setChartData(mappedData.yearly);
         break;
       default:
-        setChartData(monthlyData);
+        setChartData(mappedData.monthly);
     }
-  }, [timeframe]);
+  }, [timeframe, location]);
 
   const config = {
     heatIndex: { label: "Heat Index", color: "var(--orange-primary, #f97316)" },
-    temperature: { label: "Temperature", color: "var(--dark-gray-1, #353535)" },
+    temperature: {
+      label: "Temp",
+      color: "var(--dark-gray-1, #353535)",
+    },
   };
 
   // Dynamically calculate Y-axis min/max with padding
@@ -90,6 +103,29 @@ export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
   };
 
   const yDomain = getYDomain(chartData);
+
+  const handleExport = () => {
+    const exportData =
+      historicalData[location as keyof typeof historicalData] ||
+      historicalData["Town Center, Miagao, Iloilo"];
+    const csvContent = [
+      "Date,Heat Index (°C),Temperature (°C),Humidity (%)",
+      ...exportData.map(
+        (row) =>
+          `${row.date},${row.heatIndex.toFixed(1)},${row.temperature.toFixed(
+            1
+          )},${row.humidity.toFixed(1)}`
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${location}_historical_data.csv`);
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Card className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-sm flex flex-col">
@@ -138,7 +174,13 @@ export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
                 padding={{ left: 20, right: 20 }}
               />
               <YAxis axisLine={false} tickLine={false} domain={yDomain} />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelStyle={{ marginRight: "10px" }} // Add gap between label and value
+                  />
+                }
+              />
 
               <Line
                 type="monotone"
@@ -162,14 +204,19 @@ export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
           <div className="flex flex-col sm:flex-row items-start text-xs sm:text-sm whitespace-nowrap">
             <span className="flex items-center gap-1 shrink-0 ml-10">
               <span className="w-3 h-3 min-w-[12px] min-h-[12px] rounded-full bg-[var(--orange-primary)] shrink-0"></span>
-              Heat Index
+              Heat Index (°C)
             </span>
             <span className="flex items-center gap-1 shrink-0 ml-10">
               <span className="w-3 h-3 min-w-[12px] min-h-[12px] rounded-full bg-[var(--dark-gray-1,#353535)] shrink-0"></span>
-              Temperature
+              Temperature (°C)
             </span>
           </div>
-          <Button variant="outline" size="sm" className="text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs"
+            onClick={handleExport}
+          >
             <Download className="mr-2 h-4 w-4" /> Export Data
           </Button>
         </div>
