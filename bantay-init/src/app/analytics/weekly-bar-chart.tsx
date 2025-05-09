@@ -1,14 +1,15 @@
 "use client";
 
-import useSWR from "swr";
 import { useState } from "react";
+import { ChartContainer } from "@/components/ui/chart";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
-  ResponsiveContainer,
   BarChart,
   Bar,
-  CartesianGrid,
   XAxis,
   YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
   Tooltip,
 } from "recharts";
 import {
@@ -18,77 +19,94 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-} from "@/components/ui/chart";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ChevronDown } from "lucide-react";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+type MetricKey = "Temperature" | "Humidity" | "Heat Index";
 
-const METRIC_LABELS = {
-  temperature: "Temperature",
-  humidity: "Humidity",
-  heatIndex: "Heat Index",
-} as const;
+const rawData: Record<
+  MetricKey,
+  { day: string; minTemp: number; maxTemp: number }[]
+> = {
+  Temperature: [
+    { day: "MON", minTemp: 28, maxTemp: 45 },
+    { day: "TUE", minTemp: 30, maxTemp: 48 },
+    { day: "WED", minTemp: 27, maxTemp: 42 },
+    { day: "THU", minTemp: 25, maxTemp: 38 },
+    { day: "FRI", minTemp: 29, maxTemp: 44 },
+    { day: "SAT", minTemp: 31, maxTemp: 46 },
+    { day: "SUN", minTemp: 28, maxTemp: 43 },
+  ],
+  Humidity: [
+    { day: "MON", minTemp: 45, maxTemp: 65 },
+    { day: "TUE", minTemp: 50, maxTemp: 70 },
+    { day: "WED", minTemp: 48, maxTemp: 68 },
+    { day: "THU", minTemp: 52, maxTemp: 72 },
+    { day: "FRI", minTemp: 55, maxTemp: 75 },
+    { day: "SAT", minTemp: 60, maxTemp: 80 },
+    { day: "SUN", minTemp: 58, maxTemp: 78 },
+  ],
+  "Heat Index": [
+    { day: "MON", minTemp: 30, maxTemp: 48 },
+    { day: "TUE", minTemp: 32, maxTemp: 50 },
+    { day: "WED", minTemp: 29, maxTemp: 45 },
+    { day: "THU", minTemp: 27, maxTemp: 42 },
+    { day: "FRI", minTemp: 31, maxTemp: 47 },
+    { day: "SAT", minTemp: 33, maxTemp: 49 },
+    { day: "SUN", minTemp: 30, maxTemp: 46 },
+  ],
+};
 
-type MetricKey = keyof typeof METRIC_LABELS;
-const DAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const preprocessChartData = (data: (typeof rawData)[MetricKey]) =>
+  data.map((d) => ({
+    ...d,
+    delta: d.maxTemp - d.minTemp,
+  }));
 
-export default function WeeklyBarChart({
-  sensorId,
-  isMobile,
-  isTablet,
-}: {
-  sensorId: string;
-  isMobile: boolean;
-  isTablet: boolean;
-}) {
-  const [selectedMetric, setSelectedMetric] = useState<MetricKey>("heatIndex");
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
 
-  const { data = [] } = useSWR(
-    sensorId
-      ? `/api/analytics/bar-summary?sensorId=${sensorId}&metric=${selectedMetric}`
-      : null,
-    fetcher,
-    {
-      refreshInterval: 30000,
-      dedupingInterval: 30000,
-    }
+  const data = payload[0].payload;
+
+  return (
+    <div className="bg-white p-3 border border-gray-200 rounded-md shadow-md text-sm space-y-1">
+      <p className="font-semibold">{label}</p>
+      {payload.map((entry: any, index: number) => (
+        <div
+          key={index}
+          className="flex items-center justify-between text-sm gap-2"
+        >
+          <div className="flex items-center gap-2">
+            <span
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span>{entry.name}</span>
+          </div>
+          <span className="font-medium">
+            {entry.dataKey === "delta" ? data.maxTemp : data.minTemp}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default function WeeklyBarChart({ isMobile, isTablet }: any) {
+  const [selectedMetric, setSelectedMetric] = useState<MetricKey>("Heat Index");
+  const [chartData, setChartData] = useState(
+    preprocessChartData(rawData["Heat Index"])
   );
 
-  const today = new Date(Date.now() + 8 * 60 * 60 * 1000);
-  const todayIndex = (today.getUTCDay() + 6) % 7;
-
-  const rotatedLabels = [
-    ...DAY_LABELS.slice(
-      todayIndex - 6 < 0 ? 7 + (todayIndex - 6) : todayIndex - 6
-    ),
-    ...DAY_LABELS.slice(0, todayIndex + 1),
-  ];
-
-  const rotatedData = Array.isArray(data)
-    ? rotatedLabels.map((label) => {
-        const entry = data.find((d) => d.day === label);
-        return {
-          day: label,
-          min: entry?.min ?? 0,
-          delta: entry?.delta ?? 0,
-          isToday: entry?.isToday ?? false,
-        };
-      })
-    : [];
+  const handleMetricChange = (metric: MetricKey) => {
+    setSelectedMetric(metric);
+    setChartData(preprocessChartData(rawData[metric]));
+  };
 
   const config = {
-    min: {
-      label: `Min ${METRIC_LABELS[selectedMetric]}`,
-      color: "var(--dark-gray-1)",
-    },
+    minTemp: { label: `Min ${selectedMetric}`, color: "var(--dark-gray-1)" },
     delta: {
-      label: `Max ${METRIC_LABELS[selectedMetric]}`,
-      color: "var(--orange-primary)",
+      label: `Max ${selectedMetric}`,
+      color: "var(--orange-primary, #f97316)",
     },
   };
 
@@ -96,22 +114,21 @@ export default function WeeklyBarChart({
     <Card className="bg-white rounded-3xl shadow-sm flex flex-col h-full">
       <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-6 py-4">
         <CardTitle className="text-xl font-semibold">
-          Weekly Min / Max
+          Weekly Max & Min
         </CardTitle>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
-              {METRIC_LABELS[selectedMetric]}{" "}
-              <ChevronDown className="ml-1 h-4 w-4" />
+              {selectedMetric} <ChevronDown className="ml-1 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {(Object.keys(METRIC_LABELS) as MetricKey[]).map((metric) => (
+            {(Object.keys(rawData) as MetricKey[]).map((metric) => (
               <DropdownMenuItem
                 key={metric}
-                onClick={() => setSelectedMetric(metric)}
+                onClick={() => handleMetricChange(metric)}
               >
-                {METRIC_LABELS[metric]}
+                {metric}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -125,87 +142,53 @@ export default function WeeklyBarChart({
         >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={rotatedData}
+              data={chartData}
               barSize={isMobile ? 14 : isTablet ? 16 : 20}
               barGap={8}
-              margin={{ top: 10, right: 20, left: 0, bottom: 20 }}
+              margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
             >
               <CartesianGrid
                 strokeDasharray="3 3"
+                horizontal
                 vertical={false}
                 stroke="#f0f0f0"
               />
-
-              <XAxis
-                dataKey="day"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 12 }}
-              />
-
+              <XAxis dataKey="day" axisLine={false} tickLine={false} />
               <YAxis
-                domain={[0, 100]}
-                tick={{ fontSize: 12 }}
+                domain={[0, 80]}
+                ticks={[0, 20, 40, 60, 80]}
                 axisLine={false}
                 tickLine={false}
+                tick={{ fontSize: 12 }}
               />
-
-              <Tooltip
-                content={({ active, payload, label }) => {
-                  if (!active || !payload || !payload.length) return null;
-                  const isToday = payload[0]?.payload?.isToday;
-
-                  return (
-                    <div className="bg-white rounded-md border shadow-sm p-3 text-xs text-black space-y-1">
-                      <div className="font-semibold mb-1">
-                        {label} {isToday ? "(As of now)" : ""}
-                      </div>
-                      {[...payload].reverse().map((entry, index) => {
-                        const isDelta = entry.dataKey === "delta";
-                        const minValue = entry.payload.min;
-                        const value = isDelta
-                          ? minValue + (entry.payload.delta ?? 0)
-                          : minValue;
-
-                        const labelText = isDelta
-                          ? `Max ${METRIC_LABELS[selectedMetric]}`
-                          : `Min ${METRIC_LABELS[selectedMetric]}`;
-
-                        return (
-                          <div key={index} className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: entry.color }}
-                            />
-                            <div>
-                              {labelText}:{" "}
-                              {typeof value === "number"
-                                ? value.toFixed(2)
-                                : "—"}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                }}
+              <Tooltip content={<CustomTooltip />} />
+              <Bar
+                dataKey="minTemp"
+                stackId="a"
+                fill="var(--dark-gray-1)"
+                name={`Min ${selectedMetric}`}
               />
-
-              <ChartLegend
-                content={<ChartLegendContent className="justify-start ml-10" />}
-              />
-
-              <Bar dataKey="min" stackId="a" fill="var(--color-min)" />
-
               <Bar
                 dataKey="delta"
                 stackId="a"
-                fill="var(--color-delta)"
-                radius={[4, 4, 0, 0]} // Top corners only
+                fill="var(--orange-primary)"
+                name={`Max ${selectedMetric}`}
+                radius={[4, 4, 0, 0]}
               />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
+
+        <div className="flex justify-center mt-2 gap-6">
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-[var(--orange-primary)] mr-2"></div>
+            <span className="text-sm">{`Max ${selectedMetric}`}</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-[var(--dark-gray-1)] mr-2"></div>
+            <span className="text-sm">{`Min ${selectedMetric}`}</span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

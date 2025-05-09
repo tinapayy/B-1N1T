@@ -1,19 +1,11 @@
-// analytics/analytics-line-chart.tsx
-
 "use client";
 
-import useSWR from "swr";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,77 +19,77 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
-  TooltipProps,
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Download } from "lucide-react";
-import { convertToCSV, downloadCSV } from "@/lib/csv";
+import { useState, useEffect } from "react";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+// Sample data for different timeframes
+const weeklyData = [
+  { label: "Mon", heatIndex: 32, temperature: 30 },
+  { label: "Tue", heatIndex: 35, temperature: 32 },
+  { label: "Wed", heatIndex: 33, temperature: 31 },
+  { label: "Thu", heatIndex: 36, temperature: 33 },
+  { label: "Fri", heatIndex: 34, temperature: 32 },
+  { label: "Sat", heatIndex: 31, temperature: 29 },
+  { label: "Sun", heatIndex: 30, temperature: 28 },
+];
 
-const TIMEFRAME_MAP: Record<string, string> = {
-  Weekly: "week",
-  Monthly: "month",
-  Yearly: "year",
-};
+const monthlyData = [
+  { label: "Jul", heatIndex: 32, temperature: 30 },
+  { label: "Aug", heatIndex: 33, temperature: 31 },
+  { label: "Sep", heatIndex: 34, temperature: 32 },
+  { label: "Oct", heatIndex: 35, temperature: 33 },
+  { label: "Nov", heatIndex: 33, temperature: 31 },
+  { label: "Dec", heatIndex: 36, temperature: 34 },
+  { label: "Jan", heatIndex: 37, temperature: 35 },
+  { label: "Feb", heatIndex: 38, temperature: 36 },
+];
 
-export default function AnalyticsLineChart({
-  sensorId,
-  timeframe,
-  setTimeframe,
-}: {
-  sensorId: string;
-  timeframe: string;
-  setTimeframe: (val: string) => void;
-}) {
-  const mappedTimeframe = TIMEFRAME_MAP[timeframe] || "week";
- 
-  const { data = [], isLoading } = useSWR(
-    sensorId
-      ? `/api/analytics/summary?sensorId=${sensorId}&timeframe=${mappedTimeframe}`
-      : null,
-    fetcher,
-    { refreshInterval: 30000 }
-  );
+const yearlyData = [
+  { label: "2018", heatIndex: 33, temperature: 31 },
+  { label: "2019", heatIndex: 34, temperature: 32 },
+  { label: "2020", heatIndex: 35, temperature: 33 },
+  { label: "2021", heatIndex: 36, temperature: 34 },
+  { label: "2022", heatIndex: 37, temperature: 35 },
+  { label: "2023", heatIndex: 38, temperature: 36 },
+  { label: "2024", heatIndex: 39, temperature: 37 },
+];
 
-  const transformed = Array.isArray(data)
-    ? data
-        .filter(
-          (entry) =>
-            typeof entry.avgHeatIndex === "number" &&
-            typeof entry.avgTemp === "number"
-        )
-        .sort(
-          (a, b) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        )
-        .map((entry: any) => ({
-          label: formatLabel(entry.timestamp, timeframe),
-          heatIndex: entry.avgHeatIndex,
-          temperature: entry.avgTemp,
-          isPartial: entry.isPartial ?? false,
-        }))
-    : [];
+export default function AnalyticsLineChart({ timeframe, setTimeframe }: any) {
+  const [chartData, setChartData] = useState(monthlyData);
+
+  useEffect(() => {
+    switch (timeframe) {
+      case "Weekly":
+        setChartData(weeklyData);
+        break;
+      case "Monthly":
+        setChartData(monthlyData);
+        break;
+      case "Yearly":
+        setChartData(yearlyData);
+        break;
+      default:
+        setChartData(monthlyData);
+    }
+  }, [timeframe]);
 
   const config = {
-    heatIndex: {
-      label: "Heat Index",
-      color: "var(--orange-primary, #f97316)",
-    },
-    temperature: {
-      label: "Temperature",
-      color: "var(--dark-gray-1, #353535)",
-    },
+    heatIndex: { label: "Heat Index", color: "var(--orange-primary, #f97316)" },
+    temperature: { label: "Temperature", color: "var(--dark-gray-1, #353535)" },
   };
 
-  const getYDomain = (entries: any[]) => {
-    const values = entries.flatMap((d) => [d.heatIndex, d.temperature]);
-    const valid = values.filter((v) => typeof v === "number");
-    if (!valid.length) return [0, 50];
-    const min = Math.min(...valid);
-    const max = Math.max(...valid);
-    return [Math.floor(min - 2), Math.ceil(max + 2)];
+  // Dynamically calculate Y-axis min/max with padding
+  const getYDomain = (data: any[]) => {
+    const all = data.flatMap((d) => [d.heatIndex, d.temperature]);
+    const min = Math.min(...all);
+    const max = Math.max(...all);
+    const padding = 2;
+    return [Math.floor(min - padding), Math.ceil(max + padding)];
   };
+
+  const yDomain = getYDomain(chartData);
 
   return (
     <Card className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-sm flex flex-col">
@@ -131,7 +123,7 @@ export default function AnalyticsLineChart({
         >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
-              data={transformed}
+              data={chartData}
               margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
             >
               <CartesianGrid
@@ -141,54 +133,26 @@ export default function AnalyticsLineChart({
               />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
-                interval={0}
+                padding={{ left: 20, right: 20 }}
               />
-              <YAxis
-                domain={getYDomain(transformed)}
-                axisLine={false}
-                tickLine={false}
-              />
+              <YAxis axisLine={false} tickLine={false} domain={yDomain} />
               <ChartTooltip content={<ChartTooltipContent />} />
+
               <Line
                 type="monotone"
                 dataKey="heatIndex"
-                stroke={config.heatIndex.color}
+                stroke="var(--color-heatIndex)"
                 strokeWidth={2}
-                dot={(props) =>
-                  props.payload?.isPartial ? (
-                    <circle
-                      {...props}
-                      r={4}
-                      stroke={config.heatIndex.color}
-                      fill="transparent"
-                      strokeDasharray="2 2"
-                    />
-                  ) : (
-                    <circle {...props} r={3} stroke="none" />
-                  )
-                }
+                dot={false}
               />
               <Line
                 type="monotone"
                 dataKey="temperature"
-                stroke={config.temperature.color}
+                stroke="var(--color-temperature)"
                 strokeWidth={2}
-                dot={(props) =>
-                  props.payload?.isPartial ? (
-                    <circle
-                      {...props}
-                      r={4}
-                      stroke={config.temperature.color}
-                      fill="transparent"
-                      strokeDasharray="2 2"
-                    />
-                  ) : (
-                    <circle {...props} r={3} stroke="none" />
-                  )
-                }
+                dot={false}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -205,30 +169,11 @@ export default function AnalyticsLineChart({
               Temperature
             </span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs"
-            onClick={() => {
-              if (transformed.length === 0) return;
-              const csv = convertToCSV(transformed, ["label", "temperature", "heatIndex"]);
-              downloadCSV(csv, `analytics-${mappedTimeframe}.csv`);
-            }}
-          >
+          <Button variant="outline" size="sm" className="text-xs">
             <Download className="mr-2 h-4 w-4" /> Export Data
           </Button>
         </div>
       </CardContent>
     </Card>
   );
-}
-
-function formatLabel(timestamp: string, timeframe: string) {
-  const date = new Date(timestamp);
-  if (timeframe === "Weekly")
-    return date.toLocaleDateString("en-US", { weekday: "short" });
-  if (timeframe === "Monthly")
-    return date.toLocaleDateString("en-US", { month: "short" });
-  if (timeframe === "Yearly") return date.getFullYear().toString();
-  return timestamp;
 }
