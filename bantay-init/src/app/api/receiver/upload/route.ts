@@ -1,3 +1,5 @@
+// /api/receiver/upload/route.ts
+
 import { NextResponse } from "next/server";
 import { adminDb, adminRtdb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
@@ -8,6 +10,13 @@ function getTodayKey(sensorId: string): string {
   const mm = String(today.getMonth() + 1).padStart(2, "0");
   const dd = String(today.getDate()).padStart(2, "0");
   return `${sensorId}_${yyyy}-${mm}-${dd}`;
+}
+
+function getTodayDateStr(date: Date): string {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function getTodayTimestamp(): Timestamp {
@@ -36,7 +45,7 @@ export async function POST(req: Request) {
 
     const sensorDoc = await adminDb.collection("verified_sensors").doc(sensorId).get();
     if (!sensorDoc.exists) {
-      return NextResponse.json({ error: "Invalid sensor Id" }, { status: 403 });
+      return NextResponse.json({ error: "Invalid sensor ID" }, { status: 403 });
     }
 
     const rawTimestamp = body.__mockTimestamp || Date.now();
@@ -45,12 +54,12 @@ export async function POST(req: Request) {
 
     const summaryId = getTodayKey(sensorId);
     const summaryRef = adminDb.collection("summaries").doc(summaryId);
-
     const response = NextResponse.json({ success: true });
 
+    // === IDENTIFIERS ===
     const isoWeek = getISOWeekId(now);
     const weekStart = new Date(now);
-    weekStart.setUTCDate(now.getUTCDate() - now.getUTCDay() + 1);
+    weekStart.setUTCDate(now.getUTCDay() === 0 ? now.getUTCDate() - 6 : now.getUTCDate() - now.getUTCDay() + 1);
     weekStart.setUTCHours(0, 0, 0, 0);
 
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -70,75 +79,16 @@ export async function POST(req: Request) {
     const [weeklySnap, monthlySnap, yearlySnap] = await Promise.all([
       weeklyRef.get(),
       monthlyRef.get(),
-      yearlyRef.get()
+      yearlyRef.get(),
     ]);
 
-    const weeklyData = weeklySnap.exists ? weeklySnap.data() ?? {} : {};
-    const monthlyData = monthlySnap.exists ? monthlySnap.data() ?? {} : {};
-    const yearlyData = yearlySnap.exists ? yearlySnap.data() ?? {} : {};
+    const weekly = weeklySnap.exists ? weeklySnap.data() ?? {} : {};
+    const monthly = monthlySnap.exists ? monthlySnap.data() ?? {} : {};
+    const yearly = yearlySnap.exists ? yearlySnap.data() ?? {} : {};
 
-    const writeSummary = (ref: any, existing: any, count: number, scope: any) => {
-      // remove undefined values
-      const isPartial =
-        typeof scope.isoMonth !== "undefined"
-          ? isCurrentMonth
-          : typeof scope.isoYear !== "undefined"
-          ? isCurrentYear
-          : null;
-    
-      const updatePayload = {
-        sensorId: sensorId,
-        ...scope,
-        dataPointCount: count,
-        minTemp: Math.min(existing.minTemp ?? temperature, temperature),
-        maxTemp: Math.max(existing.maxTemp ?? temperature, temperature),
-        minHumidity: Math.min(existing.minHumidity ?? humidity, humidity),
-        maxHumidity: Math.max(existing.maxHumidity ?? humidity, humidity),
-        minHeatIndex: Math.min(existing.minHeatIndex ?? heatIndex, heatIndex),
-        maxHeatIndex: Math.max(existing.maxHeatIndex ?? heatIndex, heatIndex),
-        totalHumidity: (existing.totalHumidity || 0) + humidity,
-        averageHumidity: parseFloat(
-          (((existing.totalHumidity || 0) + humidity) / count).toFixed(2)
-        ),
-        alertCount:
-          heatIndex >= 32 ? (existing.alertCount || 0) + 1 : existing.alertCount || 0,
-      };
-    
-      if (isPartial !== null) {
-        (updatePayload as any).isPartial = isPartial;
-      }
-    
-      return ref.set(updatePayload, { merge: true });
-    };
-  
+    // === Firestore Batch Writes ===
 
-    const alertWrite =
-      heatIndex >= 32
-        ? adminDb.collection("alerts").add({
-            sensorId,
-            temperature,
-            humidity,
-            heatIndex,
-            alertType:
-              heatIndex >= 52
-                ? "Extreme Danger"
-                : heatIndex >= 41
-                ? "Danger"
-                : "Extreme Caution",
-            timestamp: Timestamp.fromMillis(timestamp),
-            message: `High heat index detected: ${heatIndex}`,
-            receiverId: receiverId || null,
-          })
-        : Promise.resolve();
-
-    const rtdbWrite = adminRtdb.ref(`/sensor_readings/${sensorId}`).set({
-      t: temperature,
-      h: humidity,
-      hi: heatIndex,
-      ts: timestamp,
-      r: receiverId || null,
-    });
-
+    // Summaries (for backup/monitoring)
     const summarySnap = await summaryRef.get();
     const existing = summarySnap.exists ? summarySnap.data() ?? {} : {};
     const newCount = (existing.count || 0) + 1;
@@ -148,12 +98,9 @@ export async function POST(req: Request) {
         sensorId,
         date: getTodayTimestamp(),
         count: newCount,
-        avgTemp:
-          ((existing.avgTemp || 0) * (newCount - 1) + temperature) / newCount,
-        avgHumidity:
-          ((existing.avgHumidity || 0) * (newCount - 1) + humidity) / newCount,
-        avgHeatIndex:
-          ((existing.avgHeatIndex || 0) * (newCount - 1) + heatIndex) / newCount,
+        avgTemp: ((existing.avgTemp || 0) * (newCount - 1) + temperature) / newCount,
+        avgHumidity: ((existing.avgHumidity || 0) * (newCount - 1) + humidity) / newCount,
+        avgHeatIndex: ((existing.avgHeatIndex || 0) * (newCount - 1) + heatIndex) / newCount,
         maxTemp: Math.max(existing.maxTemp ?? temperature, temperature),
         minTemp: Math.min(existing.minTemp ?? temperature, temperature),
         maxHumidity: Math.max(existing.maxHumidity ?? humidity, humidity),
@@ -165,60 +112,139 @@ export async function POST(req: Request) {
       { merge: true }
     );
 
-    const dailyHighsWrite = adminDb
-      .collection("analytics_daily_highs")
-      .doc(getTodayKey(sensorId))
-      .set(
-        {
-          sensorId,
-          timestamp: Timestamp.fromMillis(timestamp),
-          highestTemp: Math.max(existing.maxTemp ?? temperature, temperature),
-          highestHumidity: Math.max(existing.maxHumidity ?? humidity, humidity),
-          highestHeatIndex: Math.max(existing.maxHeatIndex ?? heatIndex, heatIndex),
-        },
-        { merge: true }
-      );
+    // Weekly Summary
+    const weeklyCount = (weekly.dataPointCount || 0) + 1;
+    const weeklyWrite = weeklyRef.set(
+      {
+        sensorID: sensorId,
+        isoWeek,
+        weekStart: Timestamp.fromDate(weekStart),
+        dataPointCount: weeklyCount,
+        avgTemp: ((weekly.avgTemp || 0) * (weeklyCount - 1) + temperature) / weeklyCount,
+        avgHeatIndex: ((weekly.avgHeatIndex || 0) * (weeklyCount - 1) + heatIndex) / weeklyCount,
+        alertCount: heatIndex >= 32 ? (weekly.alertCount || 0) + 1 : weekly.alertCount || 0,
+        isPartial: false,
+      },
+      { merge: true }
+    );
 
-    const latestWrite = adminDb
-      .collection("sensor_latest")
-      .doc(sensorId)
-      .set(
-        {
-          lastTemperature: temperature,
-          lastHumidity: humidity,
-          lastHeatIndex: heatIndex,
-          lastReadingTimestamp: Timestamp.fromMillis(timestamp),
-          lastAlertLevel:
-            heatIndex >= 52
-              ? "Extreme Danger"
-              : heatIndex >= 41
-              ? "Danger"
-              : heatIndex >= 32
-              ? "Extreme Caution"
-              : "Safe",
-          peakHeatIndex: Math.max(existing.peakHeatIndex ?? 0, heatIndex),
-        },
-        { merge: true }
-      );
+    // Monthly Summary
+    const monthlyCount = (monthly.dataPointCount || 0) + 1;
+    const monthlyWrite = monthlyRef.set(
+      {
+        sensorID: sensorId,
+        isoMonth,
+        monthStart: Timestamp.fromDate(monthStart),
+        dataPointCount: monthlyCount,
+        avgTemp: ((monthly.avgTemp || 0) * (monthlyCount - 1) + temperature) / monthlyCount,
+        avgHeatIndex: ((monthly.avgHeatIndex || 0) * (monthlyCount - 1) + heatIndex) / monthlyCount,
+        alertCount: heatIndex >= 32 ? (monthly.alertCount || 0) + 1 : monthly.alertCount || 0,
+        isPartial: isCurrentMonth,
+      },
+      { merge: true }
+    );
+
+    // Yearly Summary
+    const yearlyCount = (yearly.dataPointCount || 0) + 1;
+    const yearlyWrite = yearlyRef.set(
+      {
+        sensorID: sensorId,
+        isoYear,
+        yearStart: Timestamp.fromDate(yearStart),
+        dataPointCount: yearlyCount,
+        avgTemp: ((yearly.avgTemp || 0) * (yearlyCount - 1) + temperature) / yearlyCount,
+        avgHeatIndex: ((yearly.avgHeatIndex || 0) * (yearlyCount - 1) + heatIndex) / yearlyCount,
+        alertCount: heatIndex >= 32 ? (yearly.alertCount || 0) + 1 : yearly.alertCount || 0,
+        isPartial: isCurrentYear,
+      },
+      { merge: true }
+    );
+
+    // Alerts
+    const alertWrite =
+      heatIndex >= 32
+        ? adminDb.collection("alerts").add({
+            sensorId,
+            temperature,
+            humidity,
+            heatIndex,
+            alertType:
+              heatIndex >= 52 ? "Extreme Danger" : heatIndex >= 41 ? "Danger" : "Extreme Caution",
+            timestamp: Timestamp.fromMillis(timestamp),
+            message: `High heat index detected: ${heatIndex}`,
+            receiverId: receiverId || null,
+          })
+        : Promise.resolve();
+
+    // Realtime DB live update
+    const rtdbWrite = adminRtdb.ref(`/sensor_readings/${sensorId}`).set({
+      t: temperature,
+      h: humidity,
+      hi: heatIndex,
+      ts: timestamp,
+      r: receiverId || null,
+    });
+
+    // Min-Max Summary
+    const minMaxId = `${sensorId}_${getTodayDateStr(now)}`;
+    const minMaxRef = adminDb.collection("analytics_min_max_summary").doc(minMaxId);
+    const minMaxSnap = await minMaxRef.get();
+    const minMax = minMaxSnap.exists ? minMaxSnap.data() ?? {} : {};
+    const minMaxWrite = minMaxRef.set(
+      {
+        sensorID: sensorId,
+        timestamp: Timestamp.fromMillis(timestamp),
+        minTemp: Math.min(minMax.minTemp ?? temperature, temperature),
+        maxTemp: Math.max(minMax.maxTemp ?? temperature, temperature),
+        minHumidity: Math.min(minMax.minHumidity ?? humidity, humidity),
+        maxHumidity: Math.max(minMax.maxHumidity ?? humidity, humidity),
+        minHeatIndex: Math.min(minMax.minHeatIndex ?? heatIndex, heatIndex),
+        maxHeatIndex: Math.max(minMax.maxHeatIndex ?? heatIndex, heatIndex),
+      },
+      { merge: true }
+    );
+
+    // Daily Highs
+    const highsRef = adminDb.collection("analytics_daily_highs").doc(getTodayKey(sensorId));
+    const highsSnap = await highsRef.get();
+    const highs = highsSnap.exists ? highsSnap.data() ?? {} : {};
+    const dailyHighsWrite = highsRef.set(
+      {
+        sensorId,
+        timestamp: Timestamp.fromMillis(timestamp),
+        highestTemp: Math.max(highs.highestTemp ?? temperature, temperature),
+        highestHumidity: Math.max(highs.highestHumidity ?? humidity, humidity),
+        highestHeatIndex: Math.max(highs.highestHeatIndex ?? heatIndex, heatIndex),
+      },
+      { merge: true }
+    );
+
+    // Latest reading
+    const latestSnap = await adminDb.collection("sensor_latest").doc(sensorId).get();
+    const latest = latestSnap.exists ? latestSnap.data() ?? {} : {};
+    const latestWrite = adminDb.collection("sensor_latest").doc(sensorId).set(
+      {
+        lastTemperature: temperature,
+        lastHumidity: humidity,
+        lastHeatIndex: heatIndex,
+        lastReadingTimestamp: Timestamp.fromMillis(timestamp),
+        lastAlertLevel:
+          heatIndex >= 52 ? "Extreme Danger" : heatIndex >= 41 ? "Danger" : heatIndex >= 32 ? "Extreme Caution" : "Safe",
+        peakHeatIndex: Math.max(latest.peakHeatIndex ?? 0, heatIndex),
+      },
+      { merge: true }
+    );
 
     await Promise.all([
       rtdbWrite,
       alertWrite,
       summaryWrite,
+      minMaxWrite,
       dailyHighsWrite,
       latestWrite,
-      writeSummary(weeklyRef, weeklyData, (weeklyData.dataPointCount || 0) + 1, {
-        isoWeek,
-        weekStart: Timestamp.fromDate(weekStart)
-      }),
-      writeSummary(monthlyRef, monthlyData, (monthlyData.dataPointCount || 0) + 1, {
-        isoMonth,
-        monthStart: Timestamp.fromDate(monthStart)
-      }),
-      writeSummary(yearlyRef, yearlyData, (yearlyData.dataPointCount || 0) + 1, {
-        isoYear,
-        yearStart: Timestamp.fromDate(yearStart)
-      }),
+      weeklyWrite,
+      monthlyWrite,
+      yearlyWrite,
     ]);
 
     return response;
