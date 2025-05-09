@@ -11,6 +11,11 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import {
+  getUnverifiedSensorIds,
+  addVerifiedSensor,
+  updateReceiverSensorMapping,
+} from "@/lib/adminDevices";
 
 interface Sensor {
   id: number;
@@ -26,10 +31,10 @@ interface Sensor {
 
 interface Receiver {
   id: number;
-  sensorName: string;
+  name: string;
   receiverId: string;
-  longitude: string;
-  latitude: string;
+  longitude: string | number;
+  latitude: string | number;
 }
 
 interface AddSensorFormProps {
@@ -45,9 +50,6 @@ interface AddSensorFormProps {
   existingReceivers?: Receiver[];
 }
 
-// Placeholder for now
-const unverifiedSensorIds = ["SENSOR_001", "SENSOR_002", "SENSOR_003"];
-
 export function AddSensorForm({
   onAdd,
   selectedLocation,
@@ -59,19 +61,27 @@ export function AddSensorForm({
   const [formData, setFormData] = useState({
     sensorName: "",
     sensorId: "",
-    receiverName: "",
     receiverId: "",
     longitude: "",
     latitude: "",
     location: "",
   });
 
+  const [unverifiedSensorIds, setUnverifiedSensorIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadUnverified = async () => {
+      const ids = await getUnverifiedSensorIds();
+      setUnverifiedSensorIds(ids);
+    };
+    loadUnverified();
+  }, []);
+
   useEffect(() => {
     if (editingDevice) {
       setFormData({
         sensorName: editingDevice.sensorName || "",
         sensorId: editingDevice.sensorId || "",
-        receiverName: editingDevice.receiverName || "",
         receiverId: editingDevice.receiverId || "",
         longitude: editingDevice.longitude || "",
         latitude: editingDevice.latitude || "",
@@ -96,15 +106,51 @@ export function AddSensorForm({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleReceiverSelect = (receiverId: string) => {
+    console.log("handleReceiverSelect triggered with receiverId:", receiverId);
+    const selected = existingReceivers.find((r) => r.receiverId === receiverId);
+    console.log("Selected receiver:", selected);
+    if (selected) {
+      setFormData((prev) => {
+        const newFormData = {
+          ...prev,
+          receiverId,
+          receiverName: selected.name || "(Unnamed Receiver)",
+        };
+        console.log("Updated formData:", newFormData);
+        return newFormData;
+      });
+    } else {
+      console.warn("No receiver found for receiverId:", receiverId);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const { sensorId, receiverId, latitude, longitude } = formData;
+
+    // In edit mode, make sensorId and receiverId optional
+    if (!editingDevice && (!sensorId || !receiverId || !latitude || !longitude)) {
+      alert("Missing required fields.");
+      return;
+    }
+
+    if (editingDevice && (!latitude || !longitude)) {
+      alert("Missing required fields: latitude and longitude.");
+      return;
+    }
+
+    const receiver = existingReceivers.find((r) => r.receiverId === receiverId);
+
     const newSensor = {
-      sensorName: formData.sensorName,
+      name: formData.sensorName,
       location: formData.location,
-      sensorId: formData.sensorId,
-      receiverId: formData.receiverId,
-      receiverName: formData.receiverName,
+      // Use existing sensorId if formData.sensorId is empty during edit
+      sensorId: editingDevice && !formData.sensorId ? editingDevice.sensorId : sensorId,
+      // Use existing receiverId if formData.receiverId is empty during edit
+      receiverId: editingDevice && !formData.receiverId ? editingDevice.receiverId : receiverId,
+      receiverName: receiver?.name || "(Unnamed Receiver)",
       registerDate:
         editingDevice?.registerDate ||
         new Date()
@@ -115,41 +161,76 @@ export function AddSensorForm({
           })
           .replace(/\//g, "."),
       status: editingDevice?.status || "Offline",
-      longitude: formData.longitude,
-      latitude: formData.latitude,
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
     };
 
-    onAdd(newSensor);
+    try {
+      await addVerifiedSensor(newSensor.sensorId, newSensor);
+      await updateReceiverSensorMapping(newSensor.receiverId, newSensor.sensorId);
+      onAdd(newSensor);
+    } catch (err) {
+      console.error("Error verifying sensor:", err);
+      alert("Verification failed. See console for details.");
+      return;
+    }
 
     setFormData({
       sensorName: "",
       sensorId: "",
-      receiverName: "",
       receiverId: "",
       longitude: "",
       latitude: "",
       location: "",
     });
+    onCancel();
   };
 
   const sortedReceivers = useMemo(() => {
-    if (!selectedLocation) return existingReceivers;
+    console.log(
+      "existingReceivers:",
+      existingReceivers.map((r) => ({
+        receiverId: r.receiverId,
+        name: r.name,
+        latitude: r.latitude,
+        longitude: r.longitude,
+      }))
+    );
 
-    return [...existingReceivers].sort((a, b) => {
-      const distA = getDistance(
-        selectedLocation.lat,
-        selectedLocation.lng,
-        parseFloat(a.latitude),
-        parseFloat(a.longitude)
-      );
-      const distB = getDistance(
-        selectedLocation.lat,
-        selectedLocation.lng,
-        parseFloat(b.latitude),
-        parseFloat(b.longitude)
-      );
-      return distA - distB;
+    console.log("selectedLocation:", selectedLocation);
+
+    const filteredReceivers = [...existingReceivers].filter((r) => {
+      const validReceiverId =
+        r.receiverId && typeof r.receiverId === "string" && r.receiverId.trim() !== "";
+      const validLatitude = !isNaN(parseFloat(String(r.latitude)));
+      const validLongitude = !isNaN(parseFloat(String(r.longitude)));
+      if (!validReceiverId) console.log("Filtered out due to invalid receiverId:", r);
+      if (!validLatitude) console.log("Filtered out due to invalid latitude:", r);
+      if (!validLongitude) console.log("Filtered out due to invalid longitude:", r);
+      return validReceiverId && validLatitude && validLongitude;
     });
+
+    console.log("filteredReceivers:", filteredReceivers);
+
+    if (selectedLocation) {
+      return filteredReceivers.sort((a, b) => {
+        const distA = getDistance(
+          selectedLocation.lat,
+          selectedLocation.lng,
+          parseFloat(String(a.latitude)),
+          parseFloat(String(a.longitude))
+        );
+        const distB = getDistance(
+          selectedLocation.lat,
+          selectedLocation.lng,
+          parseFloat(String(b.latitude)),
+          parseFloat(String(b.longitude))
+        );
+        return distA - distB;
+      });
+    }
+
+    return filteredReceivers;
   }, [existingReceivers, selectedLocation]);
 
   const getDistance = (
@@ -159,7 +240,7 @@ export function AddSensorForm({
     lon2: number
   ) => {
     const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const R = 6371;
+    const R = 6371; // Earth's radius in km
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
     const a =
@@ -169,16 +250,20 @@ export function AddSensorForm({
     return R * c;
   };
 
-  const handleReceiverSelect = (value: string) => {
-    const selected = existingReceivers.find((r) => r.sensorName === value);
-    if (selected) {
-      setFormData((prev) => ({
-        ...prev,
-        receiverName: selected.sensorName,
-        receiverId: selected.receiverId,
-      }));
-    }
-  };
+  console.log(
+    "sortedReceivers:",
+    sortedReceivers.map((r) => ({
+      receiverId: r.receiverId,
+      name: r.name,
+      latitude: r.latitude,
+      longitude: r.longitude,
+    }))
+  );
+
+  // Ensure the current sensorId is included in the dropdown options during edit
+  const sensorIdOptions = editingDevice
+    ? [...new Set([editingDevice.sensorId, ...unverifiedSensorIds])].filter(Boolean)
+    : unverifiedSensorIds;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -204,34 +289,47 @@ export function AddSensorForm({
             }
           >
             <SelectTrigger id="sensorId">
-              <SelectValue placeholder="Select unverified sensor ID..." />
+              <SelectValue placeholder="Select sensor ID..." />
             </SelectTrigger>
             <SelectContent>
-              {unverifiedSensorIds.map((id) => (
-                <SelectItem key={id} value={id}>
-                  {id}
+              {sensorIdOptions.length > 0 ? (
+                sensorIdOptions.map((id) => (
+                  <SelectItem key={id} value={id}>
+                    {id}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem disabled value="no-unverified-sensors">
+                  No unverified sensors
                 </SelectItem>
-              ))}
+              )}
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="receiverName">Receiver</Label>
+          <Label htmlFor="receiverId">Receiver</Label>
           <Select
-            value={formData.receiverName}
+            value={formData.receiverId}
             onValueChange={handleReceiverSelect}
           >
-            <SelectTrigger id="receiverName">
+            <SelectTrigger id="receiverId">
               <SelectValue placeholder="Select nearest receiver..." />
             </SelectTrigger>
             <SelectContent>
-              {sortedReceivers.map((r) => (
-                <SelectItem key={r.receiverId} value={r.sensorName}>
-                  {r.sensorName} ({parseFloat(r.latitude).toFixed(4)},{" "}
-                  {parseFloat(r.longitude).toFixed(4)})
+              {sortedReceivers.length > 0 ? (
+                sortedReceivers.map((r) => (
+                  <SelectItem key={r.receiverId} value={r.receiverId}>
+                    {r.name || "(Unnamed Receiver)"} (
+                    {Number(r.latitude).toFixed(4)},{" "}
+                    {Number(r.longitude).toFixed(4)})
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem disabled value="no-receivers">
+                  No receivers available
                 </SelectItem>
-              ))}
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -284,7 +382,6 @@ export function AddSensorForm({
             setFormData({
               sensorName: "",
               sensorId: "",
-              receiverName: "",
               receiverId: "",
               longitude: "",
               latitude: "",

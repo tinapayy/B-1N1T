@@ -184,7 +184,7 @@ export default function HeatAlertTable({
             <TableBody>
               {filteredAlerts.length > 0 ? (
                 filteredAlerts.map((alert) => (
-                  <TableRow key={alert.timestamp} className="hover:bg-muted/50">
+                  <TableRow key={`${alert.timestamp}-${alert.sensorId}-${alert.heatIndex}`} className="hover:bg-muted/50">
                     <TableCell className="py-2">
                       <div className="flex items-center">
                         <div
