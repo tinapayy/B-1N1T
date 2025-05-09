@@ -18,7 +18,11 @@ const ZoomHandler = ({ setZoom }: { setZoom: (zoom: number) => void }) => {
   return null;
 };
 
-const MapWidget = () => {
+interface MapWidgetProps {
+  onSensorSelect?: (sensorId: string) => void;
+}
+
+const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
   const [zoom, setZoom] = useState(13);
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [subscribedSensors, setSubscribedSensors] = useState<string[]>([]);
@@ -80,7 +84,11 @@ const MapWidget = () => {
     });
 
   const handleMarkerClick = (sensorId: string) => {
-    setSelectedSensor((prev) => (prev === sensorId ? null : sensorId));
+    const newSelected = selectedSensor === sensorId ? null : sensorId;
+    setSelectedSensor(newSelected);
+    if (onSensorSelect && newSelected) {
+      onSensorSelect(newSelected);
+    }
   };
 
   const handleSubscribeToggle = (sensorId: string, location: string) => {
@@ -115,7 +123,6 @@ const MapWidget = () => {
         <ZoomHandler setZoom={setZoom} />
         <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
 
-        {/* 🔥 Sensor Markers */}
         {sensorData.map((sensor: any) => (
           <Marker
             key={sensor.sensorId}
@@ -125,7 +132,6 @@ const MapWidget = () => {
           />
         ))}
 
-        {/* 📡 Receiver Markers */}
         {receiverData.map((receiver: any) => (
           <Marker
             key={receiver.receiverId}
@@ -135,7 +141,6 @@ const MapWidget = () => {
         ))}
       </MapContainer>
 
-      {/* ℹ️ Sensor popup */}
       {selectedSensor && (
         <div
           className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white p-3 rounded-lg shadow-lg z-[1000] text-sm"
@@ -184,17 +189,12 @@ const MapWidget = () => {
         </div>
       )}
 
-      {/* ✅ Toast feedback */}
       {confirmation && (
-        <div
-          className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-[var(--orange-primary)] text-white p-2 rounded-lg shadow-lg z-[1000] text-sm animate-fade-in-out"
-          style={{ minWidth: "200px", maxWidth: "90%" }}
-        >
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-[var(--orange-primary)] text-white p-2 rounded-lg shadow-lg z-[1000] text-sm animate-fade-in-out">
           {confirmation}
         </div>
       )}
 
-      {/* 📋 Subscribed list toggle */}
       <button
         onClick={() => setShowSubscribedList((prev) => !prev)}
         className="absolute bottom-4 right-4 bg-[var(--orange-primary)] text-white p-2 rounded-full shadow-lg z-[10] hover:bg-[var(--dark-gray-1)] transition-colors"
@@ -202,7 +202,6 @@ const MapWidget = () => {
         <Server className="w-5 h-5" />
       </button>
 
-      {/* 🗂 Subscribed Sensors */}
       {showSubscribedList && (
         <div className="absolute bottom-16 right-4 bg-white p-4 rounded-lg shadow-lg z-[1000] text-sm w-64 max-h-64 overflow-y-auto">
           <h3 className="font-bold mb-2">Subscribed Sensors</h3>
