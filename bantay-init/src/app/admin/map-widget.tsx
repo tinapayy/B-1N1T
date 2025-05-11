@@ -38,6 +38,19 @@ function MapClickHandler({
   return null;
 }
 
+function MapResizeHandler() {
+  const map = useMapEvents({});
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    const container = map.getContainer();
+    resizeObserver.observe(container);
+    return () => resizeObserver.unobserve(container);
+  }, [map]);
+  return null;
+}
+
 export function MapWidget({ onLocationSelect }: MapWidgetProps) {
   const defaultPosition: [number, number] = [10.7202, 122.5621];
   const [position, setPosition] = useState<[number, number]>(defaultPosition);
@@ -63,6 +76,9 @@ export function MapWidget({ onLocationSelect }: MapWidgetProps) {
     }
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => fetchSuggestions(search), 400);
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
   }, [search, isTyping]);
 
   const reverseGeocode = async (lat: number, lng: number) => {
@@ -103,9 +119,9 @@ export function MapWidget({ onLocationSelect }: MapWidgetProps) {
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full min-h-[300px]">
       {/* Search Bar */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-2 bg-white">
+      <div className="absolute top-0 left-0 right-0 z-[1000] p-2 bg-white">
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -118,7 +134,7 @@ export function MapWidget({ onLocationSelect }: MapWidgetProps) {
             className="pl-10 pr-4 text-sm w-full"
           />
           {isTyping && suggestions.length > 0 && (
-            <div className="absolute top-full mt-1 left-0 right-0 bg-white z-30 border border-gray-200 rounded shadow-md max-h-48 overflow-y-auto text-sm">
+            <div className="absolute top-full mt-1 left-0 right-0 bg-white z-[1001] border border-gray-200 rounded shadow-md max-h-48 overflow-y-auto text-sm">
               {suggestions.map((s, i) => (
                 <div
                   key={i}
@@ -142,8 +158,8 @@ export function MapWidget({ onLocationSelect }: MapWidgetProps) {
           center={position}
           zoom={13}
           scrollWheelZoom
-          className="h-full w-full z-0"
-          zoomControl={false} // disable top-left control
+          className="w-full h-full min-h-[300px] z-0"
+          zoomControl={false}
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -160,12 +176,13 @@ export function MapWidget({ onLocationSelect }: MapWidgetProps) {
               reverseGeocode(lat, lng);
             }}
           />
+          <MapResizeHandler />
         </MapContainer>
         {/* Re-add zoom buttons in bottom right */}
-        <div className="leaflet-bottom leaflet-right z-10 absolute bottom-2 right-2">
+        <div className="leaflet-bottom leaflet-right z-[1000] absolute bottom-2 right-2">
           <div className="leaflet-control leaflet-bar flex flex-col shadow">
             <button
-              className="leaflet-control-zoom-in text-xl px-2 py-1"
+              className="leaflet-control-zoom-in text-xl px-2 py-1 bg-white border border-gray-300 hover:bg-gray-100"
               onClick={() =>
                 (
                   document.querySelector(".leaflet-container") as any
@@ -175,7 +192,7 @@ export function MapWidget({ onLocationSelect }: MapWidgetProps) {
               +
             </button>
             <button
-              className="leaflet-control-zoom-out text-xl px-2 py-1"
+              className="leaflet-control-zoom-out text-xl px-2 py-1 bg-white border border-gray-300 hover:bg-gray-100"
               onClick={() =>
                 (
                   document.querySelector(".leaflet-container") as any
