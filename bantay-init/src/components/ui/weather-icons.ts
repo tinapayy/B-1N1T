@@ -28,6 +28,22 @@ export const getWeatherIconInfo = (
     isNight && (condition === "sunny" || condition === "partly-cloudy");
 
   const weatherIconPath = (() => {
+    if (isNight) {
+      switch (condition) {
+        case "sunny":
+          return "/assets/weather-icons/clear-night.png"; // Night-specific icon for clear skies
+        case "partly-cloudy":
+          return "/assets/weather-icons/partly-cloudy-night.png"; // Night-specific icon
+        case "cloudy":
+          return "/assets/weather-icons/cloudy.png";
+        case "rain":
+          return "/assets/weather-icons/rain.png";
+        case "storm":
+          return "/assets/weather-icons/storm.png";
+        default:
+          return "/assets/weather-icons/clear-night.png";
+      }
+    }
     switch (condition) {
       case "sunny":
         return "/assets/weather-icons/sunny.png";
