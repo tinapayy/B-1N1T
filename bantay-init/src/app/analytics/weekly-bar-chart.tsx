@@ -1,5 +1,3 @@
-// analytics/weekly-bar-chart.tsx
-
 "use client";
 
 import useSWR from "swr";
@@ -51,7 +49,9 @@ export default function WeeklyBarChart({
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("heatIndex");
 
   const { data = [] } = useSWR(
-    sensorId ? `/api/analytics/bar-summary?sensorId=${sensorId}&metric=${selectedMetric}` : null,
+    sensorId
+      ? `/api/analytics/bar-summary?sensorId=${sensorId}&metric=${selectedMetric}`
+      : null,
     fetcher,
     {
       refreshInterval: 30000,
@@ -59,16 +59,13 @@ export default function WeeklyBarChart({
     }
   );
 
-  const today = new Date(Date.now() + 8 * 60 * 60 * 1000); // UTC+8
-  const todayIndex = (today.getUTCDay() + 6) % 7; // PH weekday index (MON=0)
-
-  const dayIndexMap = DAY_LABELS.reduce<Record<string, number>>((acc, day, i) => {
-    acc[day] = i;
-    return acc;
-  }, {});
+  const today = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  const todayIndex = (today.getUTCDay() + 6) % 7;
 
   const rotatedLabels = [
-    ...DAY_LABELS.slice(todayIndex - 6 < 0 ? 7 + (todayIndex - 6) : todayIndex - 6),
+    ...DAY_LABELS.slice(
+      todayIndex - 6 < 0 ? 7 + (todayIndex - 6) : todayIndex - 6
+    ),
     ...DAY_LABELS.slice(0, todayIndex + 1),
   ];
 
@@ -79,6 +76,7 @@ export default function WeeklyBarChart({
           day: label,
           min: entry?.min ?? 0,
           delta: entry?.delta ?? 0,
+          isToday: entry?.isToday ?? false,
         };
       })
     : [];
@@ -97,16 +95,22 @@ export default function WeeklyBarChart({
   return (
     <Card className="bg-white rounded-3xl shadow-sm flex flex-col h-full">
       <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-6 py-4">
-        <CardTitle className="text-xl font-semibold">Weekly Min / Max</CardTitle>
+        <CardTitle className="text-xl font-semibold">
+          Weekly Min / Max
+        </CardTitle>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
-              {METRIC_LABELS[selectedMetric]} <ChevronDown className="ml-1 h-4 w-4" />
+              {METRIC_LABELS[selectedMetric]}{" "}
+              <ChevronDown className="ml-1 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {(Object.keys(METRIC_LABELS) as MetricKey[]).map((metric) => (
-              <DropdownMenuItem key={metric} onClick={() => setSelectedMetric(metric)}>
+              <DropdownMenuItem
+                key={metric}
+                onClick={() => setSelectedMetric(metric)}
+              >
                 {METRIC_LABELS[metric]}
               </DropdownMenuItem>
             ))}
@@ -115,7 +119,10 @@ export default function WeeklyBarChart({
       </CardHeader>
 
       <CardContent className="pb-4 flex-grow flex flex-col">
-        <ChartContainer config={config} className="h-[250px] flex-grow aspect-auto">
+        <ChartContainer
+          config={config}
+          className="h-[250px] flex-grow aspect-auto"
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={rotatedData}
@@ -123,21 +130,42 @@ export default function WeeklyBarChart({
               barGap={8}
               margin={{ top: 10, right: 20, left: 0, bottom: 20 }}
             >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-              <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="#f0f0f0"
+              />
+
+              <XAxis
+                dataKey="day"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 12 }}
+              />
+
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+
               <Tooltip
                 content={({ active, payload, label }) => {
                   if (!active || !payload || !payload.length) return null;
+                  const isToday = payload[0]?.payload?.isToday;
+
                   return (
                     <div className="bg-white rounded-md border shadow-sm p-3 text-xs text-black space-y-1">
-                      <div className="font-semibold mb-1">{label}</div>
-                      {payload.map((entry, index) => {
+                      <div className="font-semibold mb-1">
+                        {label} {isToday ? "(As of now)" : ""}
+                      </div>
+                      {[...payload].reverse().map((entry, index) => {
                         const isDelta = entry.dataKey === "delta";
                         const minValue = entry.payload.min;
                         const value = isDelta
                           ? minValue + (entry.payload.delta ?? 0)
-                          : entry.value;
+                          : minValue;
 
                         const labelText = isDelta
                           ? `Max ${METRIC_LABELS[selectedMetric]}`
@@ -150,7 +178,10 @@ export default function WeeklyBarChart({
                               style={{ backgroundColor: entry.color }}
                             />
                             <div>
-                              {labelText}: {typeof value === "number" ? value.toFixed(2) : "—"}
+                              {labelText}:{" "}
+                              {typeof value === "number"
+                                ? value.toFixed(2)
+                                : "—"}
                             </div>
                           </div>
                         );
@@ -159,9 +190,19 @@ export default function WeeklyBarChart({
                   );
                 }}
               />
-              <ChartLegend content={<ChartLegendContent />} />
+
+              <ChartLegend
+                content={<ChartLegendContent className="justify-start ml-10" />}
+              />
+
               <Bar dataKey="min" stackId="a" fill="var(--color-min)" />
-              <Bar dataKey="delta" stackId="a" fill="var(--color-delta)" radius={[4, 4, 0, 0]} />
+
+              <Bar
+                dataKey="delta"
+                stackId="a"
+                fill="var(--color-delta)"
+                radius={[4, 4, 0, 0]} // Top corners only
+              />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>

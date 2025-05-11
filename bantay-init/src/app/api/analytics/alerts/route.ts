@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
   const range = searchParams.get("range") || "month"; // fallback to month
 
   if (!sensorId) {
-    return NextResponse.json({ error: "Missing sensorId parameter" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing sensorId parameter" },
+      { status: 400 }
+    );
   }
 
   const now = new Date(Date.now() + 8 * 60 * 60 * 1000); // UTC+8
@@ -32,7 +35,9 @@ export async function GET(req: NextRequest) {
       break;
   }
 
-  const startTimestamp = Timestamp.fromDate(new Date(start.getTime() - 8 * 60 * 60 * 1000)); // back to UTC
+  const startTimestamp = Timestamp.fromDate(
+    new Date(start.getTime() - 8 * 60 * 60 * 1000)
+  ); // back to UTC
 
   try {
     const snapshot = await adminDb
@@ -46,7 +51,7 @@ export async function GET(req: NextRequest) {
       const d = doc.data();
       return {
         sensorId: d.sensorId,
-        alertCategory: d.alertCategory, // updated field
+        alertType: d.alertType, // updated field
         heatIndex: d.heatIndexValue ?? d.heatIndex ?? null, // schema fallback
         timestamp: d.timestamp.toDate().toISOString(),
       };
@@ -58,6 +63,9 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error("Failed to fetch alerts:", err);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }

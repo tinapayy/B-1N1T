@@ -2,51 +2,39 @@
 #include <LoRa.h>
 #include <SPI.h>
 #include <Wire.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <WiFi.h>
-#include <Firebase_ESP_Client.h>
-#include <addons/TokenHelper.h>
 
+// --- LoRa Pin Definitions ---
 #define ss 5
 #define rst 14
 #define dio0 2
 #define BAND 433E6
 
+// --- OLED Display ---
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1
 #define SCREEN_ADDRESS 0x3C
-
-#define WIFI_SSID ""
-#define WIFI_PASSWORD ""
-#define API_KEY ""
-#define DATABASE_URL ""
-#define FIREBASE_PROJECT_ID ""
-#define DATABASE_ID ""
-#define USER_EMAIL ""
-#define USER_PASSWORD ""
-
-FirebaseData fbdo;
-FirebaseAuth auth;
-FirebaseConfig config;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+// --- Wi-Fi Credentials ---
+#define WIFI_SSID "3D2Y_2.4Ghz"
+#define WIFI_PASSWORD "minecraft@259"
+
+// --- Backend Endpoints ---
+#define UPLOAD_ENDPOINT "http://192.168.1.3:3000/api/receiver/upload"
+#define RECEIVER_BOOT_ENDPOINT "http://192.168.1.3:3000/api/receiver/boot"
+#define SENSOR_BOOT_ENDPOINT "http://192.168.1.3:3000/api/sensor/boot"
+
+// --- Globals ---
 String sensorId;
 float temperature, humidity, heatIndex;
 int lastRSSI = 0;
 
-void setupLoRa() {
-  Serial.println("LoRa Receiver");
-  LoRa.setPins(ss, rst, dio0);
-  while (!LoRa.begin(BAND)) {
-    Serial.print(".");
-    delay(500);
-  }
-  LoRa.setSyncWord(0xA5);
-  Serial.println("LoRa Initialized");
-}
-
+// --- Setup Wi-Fi ---
 void setupWifi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
@@ -57,18 +45,84 @@ void setupWifi() {
   Serial.println("\nWi-Fi Connected!");
 }
 
-void setupFirebase() {
-  config.api_key = API_KEY;
-  config.database_url = DATABASE_URL;
-  auth.user.email = USER_EMAIL;
-  auth.user.password = USER_PASSWORD;
-  config.token_status_callback = tokenStatusCallback;
-  Firebase.reconnectNetwork(true);
-  fbdo.setBSSLBufferSize(4096, 1024);
-  fbdo.setResponseSize(2048);
-  Firebase.begin(&config, &auth);
+// --- Register Receiver to Backend (1st boot detection) ---
+void registerReceiverIfNeeded() {
+  String receiverId = "RECEIVER_A8:8F:84";
+  HTTPClient http;
+  http.begin(RECEIVER_BOOT_ENDPOINT);
+  http.addHeader("Content-Type", "application/json");
+
+  String body = "{";
+  body += "\"receiverId\":\"" + receiverId + "\",";
+  body += "\"mac\":\"" + WiFi.macAddress() + "\"";
+  body += "}";
+
+  int code = http.POST(body);
+  if (code > 0) {
+    Serial.println("Receiver boot POST OK: " + String(code));
+    Serial.println("Response: " + http.getString());
+  } else {
+    Serial.println("Receiver boot POST failed: " + http.errorToString(code));
+  }
+
+  http.end();
 }
 
+// --- Register Sensor to Backend (via receiver) ---
+void registerSensorIfNeeded(const String& sensorId, const String& receiverId) {
+  HTTPClient http;
+  http.begin(SENSOR_BOOT_ENDPOINT);
+  http.addHeader("Content-Type", "application/json");
+
+  String body = "{";
+  body += "\"sensorId\":\"" + sensorId + "\",";
+  body += "\"receiverId\":\"" + receiverId + "\"";
+  body += "}";
+
+  int code = http.POST(body);
+  if (code > 0) {
+    Serial.println("Sensor boot POST OK: " + String(code));
+    Serial.println("Response: " + http.getString());
+  } else {
+    Serial.println("Sensor boot POST failed: " + http.errorToString(code));
+  }
+
+  http.end();
+}
+
+// --- Setup LoRa ---
+void setupLoRa() {
+  Serial.println("LoRa Receiver Init");
+  LoRa.setPins(ss, rst, dio0);
+  while (!LoRa.begin(BAND)) {
+    Serial.print(".");
+    delay(500);
+  }
+  LoRa.setSyncWord(0xA5);
+  Serial.println("LoRa Initialized");
+}
+
+// --- Update OLED Display ---
+void updateDisplay() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  display.print("Temp: ");
+  display.print(temperature);
+  display.println(" C");
+  display.print("Humidity: ");
+  display.print(humidity);
+  display.println(" %");
+  display.print("Heat Index: ");
+  display.print(heatIndex);
+  display.println(" C");
+  display.print("RSSI: ");
+  display.print(lastRSSI);
+  display.println(" dBm");
+  display.display();
+}
+
+// --- Parse LoRa Payload & Upload ---
 void parseLoRaPayload(String payload) {
   int index = 0;
   String data[4];
@@ -91,78 +145,66 @@ void parseLoRaPayload(String payload) {
   Serial.println("Humidity: " + String(humidity));
   Serial.println("Heat Index: " + String(heatIndex));
 
-  if (Firebase.ready() && auth.token.uid.length() > 0) {
-    const char* collectionId = "readings";
-    const char* documentId = "";
-    const char* mask = "";
+  if (WiFi.status() == WL_CONNECTED && heatIndex != 0) {
+    String receiverId = "RECEIVER_" + WiFi.macAddress().substring(9);
 
-    FirebaseJson content;
-    content.set("fields/sensorId/stringValue", sensorId);
-    content.set("fields/temperature/doubleValue", temperature);
-    content.set("fields/humidity/doubleValue", humidity);
-    content.set("fields/heatIndex/doubleValue", heatIndex);
-    content.set("fields/receiverId/stringValue", "RECEIVER_" + WiFi.macAddress().substring(9));
+    // First-boot detection for sensor
+    registerSensorIfNeeded(sensorId, receiverId);
 
-    if (Firebase.Firestore.createDocument(&fbdo, FIREBASE_PROJECT_ID, DATABASE_ID, collectionId, documentId, content.raw(), mask)) {
-      Serial.println("Firestore upload successful");
+    // Upload reading
+    HTTPClient http;
+    http.begin(UPLOAD_ENDPOINT);
+    http.addHeader("Content-Type", "application/json");
+
+    String json = "{";
+    json += "\"sensorId\":\"" + sensorId + "\",";
+    json += "\"temperature\":" + String(temperature) + ",";
+    json += "\"humidity\":" + String(humidity) + ",";
+    json += "\"heatIndex\":" + String(heatIndex) + ",";
+    json += "\"receiverId\":\"" + receiverId + "\"";
+    json += "}";
+
+    int httpResponseCode = http.POST(json);
+
+    delay(100);  // Let TCP stack finalize the response
+
+    if (httpResponseCode > 0) {
+      Serial.print("POST OK: ");
+      Serial.println(httpResponseCode);
+      Serial.println("Response: " + http.getString());
     } else {
-      Serial.print("Firestore error: ");
-      Serial.println(fbdo.errorReason());
+      Serial.print("POST Failed: ");
+      Serial.println(http.errorToString(httpResponseCode).c_str());
     }
 
-    String rtdbPath = "/sensor_readings/" + sensorId;
-    FirebaseJson liveData;
-    liveData.set("temperature", temperature);
-    liveData.set("humidity", humidity);
-    liveData.set("heatIndex", heatIndex);
-    liveData.set("receiverId", "RECEIVER_" + WiFi.macAddress().substring(9));
-    Firebase.RTDB.setJSON(&fbdo, rtdbPath.c_str(), &liveData);
+    http.end();
   }
 }
 
-void updateDisplay() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setCursor(0, 0);
-  display.print("Temp: ");
-  display.print(temperature);
-  display.println(" C");
-  display.print("Humidity: ");
-  display.print(humidity);
-  display.println(" %");
-  display.print("Heat Index: ");
-  display.print(heatIndex);
-  display.println(" C");
-  display.print("RSSI: ");
-  display.print(lastRSSI);
-  display.println(" dBm");
-  display.display();
-}
-
+// --- Setup ---
 void setup() {
   Serial.begin(115200);
-  Wire.begin(21, 22);  // for OLED
+  Wire.begin(21, 22);
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("SSD1306 failed"));
-    while (1) {}
+    Serial.println(F("SSD1306 allocation failed"));
+    while (true) {}
   }
 
   setupWifi();
-  setupFirebase();
+  registerReceiverIfNeeded();
   setupLoRa();
 }
 
+// --- Loop ---
 void loop() {
   int packetSize = LoRa.parsePacket();
-  if (packetSize) {
-    if (LoRa.available()) {
-      String payload = LoRa.readString();
-      Serial.println("Received LoRa payload: " + payload);
-      parseLoRaPayload(payload);
-      lastRSSI = LoRa.packetRssi();
-      updateDisplay();
-    }
+  if (packetSize && LoRa.available()) {
+    String payload = LoRa.readString();
+    Serial.println("Received LoRa payload: " + payload);
+    parseLoRaPayload(payload);
+    lastRSSI = LoRa.packetRssi();
+    updateDisplay();
   }
   delay(100);
 }
