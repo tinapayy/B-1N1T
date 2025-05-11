@@ -22,7 +22,6 @@ const formatCondition = (
   condition: HourlyForecastData["condition"],
   isNight: boolean
 ) => {
-  // Map "sunny" to "clear" at night for tooltip display
   const displayCondition =
     isNight && condition === "sunny" ? "clear" : condition;
   return displayCondition
@@ -48,12 +47,11 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
       setError(null);
       try {
         const data = await fetchHourlyForecast(latitude, longitude);
-        // Filter forecasts to show 3 hours before and 20 hours after current time
         const now = new Date();
         const startTime = new Date(now);
-        startTime.setHours(now.getHours() - 3, 0, 0, 0); // 3 hours before
+        startTime.setHours(now.getHours() - 3, 0, 0, 0);
         const endTime = new Date(now);
-        endTime.setHours(now.getHours() + 20, 0, 0, 0); // 20 hours after
+        endTime.setHours(now.getHours() + 20, 0, 0, 0);
 
         const filteredData = data.filter((forecast) => {
           const forecastTime = new Date(forecast.timestamp);
@@ -72,10 +70,8 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
   const checkScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-      const canScrollLeft = scrollLeft > 0;
-      const canScrollRight = scrollLeft + clientWidth < scrollWidth - 1;
-      setShowLeftIndicator(canScrollLeft);
-      setShowRightIndicator(canScrollRight);
+      setShowLeftIndicator(scrollLeft > 0);
+      setShowRightIndicator(scrollLeft + clientWidth < scrollWidth - 1);
     }
   };
 
@@ -111,8 +107,7 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
     const handleResize = () => {
       if (scrollRef.current) {
         const { scrollWidth, clientWidth } = scrollRef.current;
-        const canScrollRight = scrollWidth > clientWidth;
-        setShowRightIndicator(canScrollRight);
+        setShowRightIndicator(scrollWidth > clientWidth);
       }
     };
 
@@ -120,20 +115,14 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
     window.addEventListener("resize", handleResize);
     if (scrollRef.current) {
       scrollRef.current.addEventListener("scroll", checkScroll);
-      // Scroll to one hour before current hour to position current hour slightly to the right
       const currentHourIndex = forecasts.findIndex((forecast) => {
         const forecastHour = new Date(forecast.timestamp).getHours();
         return forecastHour === new Date().getHours();
       });
       if (currentHourIndex >= 1) {
-        const cardWidth = 125; // Width of each forecast card
+        const cardWidth = 125;
         scrollRef.current.scrollTo({
-          left: (currentHourIndex - 1) * cardWidth + 20, // Scroll to previous hour
-          behavior: "smooth",
-        });
-      } else if (currentHourIndex === 0) {
-        scrollRef.current.scrollTo({
-          left: 0,
+          left: (currentHourIndex - 1) * cardWidth + 20,
           behavior: "smooth",
         });
       }
@@ -161,17 +150,18 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
 
   return (
     <TooltipProvider>
-      <div className="overflow-hidden relative">
-        <CardHeader className="pb-0">
+      <div className="h-[320px] overflow-hidden relative">
+        <CardHeader className="pb-2">
           <div className="space-y-1">
             <h2 className="text-2xl font-semibold">Hourly Forecast</h2>
             <p className="text-sm text-gray-500">by Open-Meteo</p>
           </div>
         </CardHeader>
-        <CardContent className="pt-6">
-          <div className="relative">
-            {/* Mobile View (Column Layout) */}
-            <div className="sm:hidden grid grid-cols-1 gap-3">
+
+        <CardContent className="pt-4 h-[calc(100%-70px)]">
+          <div className="relative h-full">
+            {/* Mobile View */}
+            <div className="sm:hidden h-full overflow-y-scroll scrollbar-hide grid grid-cols-1 gap-3">
               {forecasts.map((forecast, index) => {
                 const {
                   weatherIconPath,
@@ -241,7 +231,7 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
               })}
             </div>
 
-            {/* Desktop View (Original Row Layout) */}
+            {/* Desktop View */}
             <div
               ref={scrollRef}
               className="hidden sm:flex overflow-x-auto pb-4 gap-4 scrollbar-hide scroll-smooth cursor-grab active:cursor-grabbing"
@@ -317,7 +307,7 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
               })}
             </div>
 
-            {/* Left Scroll Button (Desktop only) */}
+            {/* Chevron Scroll Buttons */}
             {showLeftIndicator && (
               <button
                 onClick={() => scroll("left")}
@@ -327,8 +317,6 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
                 <ChevronLeft className="w-6 h-6 text-white" />
               </button>
             )}
-
-            {/* Right Scroll Button (Desktop only) */}
             {showRightIndicator && (
               <button
                 onClick={() => scroll("right")}
