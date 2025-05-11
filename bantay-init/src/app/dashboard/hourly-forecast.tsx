@@ -18,8 +18,14 @@ interface HourlyForecastProps {
   longitude: number;
 }
 
-const formatCondition = (condition: HourlyForecastData["condition"]) => {
-  return condition
+const formatCondition = (
+  condition: HourlyForecastData["condition"],
+  isNight: boolean
+) => {
+  // Map "sunny" to "clear" at night for tooltip display
+  const displayCondition =
+    isNight && condition === "sunny" ? "clear" : condition;
+  return displayCondition
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
@@ -42,7 +48,19 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
       setError(null);
       try {
         const data = await fetchHourlyForecast(latitude, longitude);
-        setForecasts(data);
+        // Filter forecasts to show 3 hours before and 20 hours after current time
+        const now = new Date();
+        const startTime = new Date(now);
+        startTime.setHours(now.getHours() - 3, 0, 0, 0); // 3 hours before
+        const endTime = new Date(now);
+        endTime.setHours(now.getHours() + 20, 0, 0, 0); // 20 hours after
+
+        const filteredData = data.filter((forecast) => {
+          const forecastTime = new Date(forecast.timestamp);
+          return forecastTime >= startTime && forecastTime <= endTime;
+        });
+
+        setForecasts(filteredData);
       } catch (err) {
         setError("Failed to fetch hourly forecast");
       }
@@ -58,13 +76,6 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
       const canScrollRight = scrollLeft + clientWidth < scrollWidth - 1;
       setShowLeftIndicator(canScrollLeft);
       setShowRightIndicator(canScrollRight);
-      console.log("Scroll State:", {
-        scrollLeft,
-        scrollWidth,
-        clientWidth,
-        canScrollLeft,
-        canScrollRight,
-      });
     }
   };
 
@@ -102,11 +113,6 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
         const { scrollWidth, clientWidth } = scrollRef.current;
         const canScrollRight = scrollWidth > clientWidth;
         setShowRightIndicator(canScrollRight);
-        console.log("Resize State:", {
-          scrollWidth,
-          clientWidth,
-          canScrollRight,
-        });
       }
     };
 
@@ -114,6 +120,23 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
     window.addEventListener("resize", handleResize);
     if (scrollRef.current) {
       scrollRef.current.addEventListener("scroll", checkScroll);
+      // Scroll to one hour before current hour to position current hour slightly to the right
+      const currentHourIndex = forecasts.findIndex((forecast) => {
+        const forecastHour = new Date(forecast.timestamp).getHours();
+        return forecastHour === new Date().getHours();
+      });
+      if (currentHourIndex >= 1) {
+        const cardWidth = 125; // Width of each forecast card
+        scrollRef.current.scrollTo({
+          left: (currentHourIndex - 1) * cardWidth + 20, // Scroll to previous hour
+          behavior: "smooth",
+        });
+      } else if (currentHourIndex === 0) {
+        scrollRef.current.scrollTo({
+          left: 0,
+          behavior: "smooth",
+        });
+      }
     }
 
     return () => {
@@ -206,7 +229,9 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
                     </TooltipTrigger>
                     <TooltipContent className="bg-white text-gray-800 rounded-lg shadow-lg p-2 text-sm">
                       <div className="flex gap-2">
-                        <span>{formatCondition(forecast.condition)}</span>
+                        <span>
+                          {formatCondition(forecast.condition, isNight)}
+                        </span>
                         <span>•</span>
                         <span>Temperature: {forecast.temperature}°C</span>
                       </div>
@@ -239,7 +264,7 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="flex-none w-[125px] h-[180px] bg-[#2f2f2f] rounded-[24px] flex flex-col items-center justify-between p-6 text-white cursor-pointer"
+                        className="flex-none w-[120px] h-[185px] bg-[#2f2f2f] rounded-[24px] flex flex-col items-center justify-between p-6 text-white cursor-pointer mr-0.5"
                         style={{
                           boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.1)",
                           background:
@@ -280,7 +305,9 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
                     </TooltipTrigger>
                     <TooltipContent className="bg-white text-gray-800 rounded-lg shadow-lg p-2 text-sm">
                       <div className="flex gap-2">
-                        <span>{formatCondition(forecast.condition)}</span>
+                        <span>
+                          {formatCondition(forecast.condition, isNight)}
+                        </span>
                         <span>•</span>
                         <span>Temperature: {forecast.temperature}°C</span>
                       </div>
@@ -295,6 +322,7 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
               <button
                 onClick={() => scroll("left")}
                 className="absolute left-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer hidden sm:block"
+                aria-label="Scroll hourly forecast left"
               >
                 <ChevronLeft className="w-6 h-6 text-white" />
               </button>
@@ -305,6 +333,7 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
               <button
                 onClick={() => scroll("right")}
                 className="absolute right-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer hidden sm:block"
+                aria-label="Scroll hourly forecast right"
               >
                 <ChevronRight className="w-6 h-6 text-white" />
               </button>
