@@ -1,3 +1,5 @@
+// receiver/boot/route.ts
+
 import { firestore } from "@/lib/firebase-client";
 import {
   doc,
