@@ -12,6 +12,14 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   getUnverifiedSensorIds,
   addVerifiedSensor,
   updateReceiverSensorMapping,
@@ -68,6 +76,8 @@ export function AddSensorForm({
   });
 
   const [unverifiedSensorIds, setUnverifiedSensorIds] = useState<string[]>([]);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingSensor, setPendingSensor] = useState<any | null>(null);
 
   useEffect(() => {
     const loadUnverified = async () => {
@@ -80,7 +90,7 @@ export function AddSensorForm({
   useEffect(() => {
     if (editingDevice) {
       setFormData({
-        sensorName: editingDevice.sensorName || "",
+        sensorName: editingDevice.name || "",
         sensorId: editingDevice.sensorId || "",
         receiverId: editingDevice.receiverId || "",
         longitude: editingDevice.longitude || "",
@@ -107,21 +117,13 @@ export function AddSensorForm({
   };
 
   const handleReceiverSelect = (receiverId: string) => {
-    console.log("handleReceiverSelect triggered with receiverId:", receiverId);
     const selected = existingReceivers.find((r) => r.receiverId === receiverId);
-    console.log("Selected receiver:", selected);
     if (selected) {
-      setFormData((prev) => {
-        const newFormData = {
-          ...prev,
-          receiverId,
-          receiverName: selected.name || "(Unnamed Receiver)",
-        };
-        console.log("Updated formData:", newFormData);
-        return newFormData;
-      });
-    } else {
-      console.warn("No receiver found for receiverId:", receiverId);
+      setFormData((prev) => ({
+        ...prev,
+        receiverId,
+        receiverName: selected.name || "(Unnamed Receiver)",
+      }));
     }
   };
 
@@ -130,8 +132,10 @@ export function AddSensorForm({
 
     const { sensorId, receiverId, latitude, longitude } = formData;
 
-    // In edit mode, make sensorId and receiverId optional
-    if (!editingDevice && (!sensorId || !receiverId || !latitude || !longitude)) {
+    if (
+      !editingDevice &&
+      (!sensorId || !receiverId || !latitude || !longitude)
+    ) {
       alert("Missing required fields.");
       return;
     }
@@ -146,10 +150,12 @@ export function AddSensorForm({
     const newSensor = {
       name: formData.sensorName,
       location: formData.location,
-      // Use existing sensorId if formData.sensorId is empty during edit
-      sensorId: editingDevice && !formData.sensorId ? editingDevice.sensorId : sensorId,
-      // Use existing receiverId if formData.receiverId is empty during edit
-      receiverId: editingDevice && !formData.receiverId ? editingDevice.receiverId : receiverId,
+      sensorId:
+        editingDevice && !formData.sensorId ? editingDevice.sensorId : sensorId,
+      receiverId:
+        editingDevice && !formData.receiverId
+          ? editingDevice.receiverId
+          : receiverId,
       receiverName: receiver?.name || "(Unnamed Receiver)",
       registerDate:
         editingDevice?.registerDate ||
@@ -165,10 +171,20 @@ export function AddSensorForm({
       longitude: parseFloat(longitude),
     };
 
+    setPendingSensor(newSensor);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!pendingSensor) return;
+
     try {
-      await addVerifiedSensor(newSensor.sensorId, newSensor);
-      await updateReceiverSensorMapping(newSensor.receiverId, newSensor.sensorId);
-      onAdd(newSensor);
+      await addVerifiedSensor(pendingSensor.sensorId, pendingSensor);
+      await updateReceiverSensorMapping(
+        pendingSensor.receiverId,
+        pendingSensor.sensorId
+      );
+      onAdd(pendingSensor);
     } catch (err) {
       console.error("Error verifying sensor:", err);
       alert("Verification failed. See console for details.");
@@ -183,34 +199,21 @@ export function AddSensorForm({
       latitude: "",
       location: "",
     });
+    setPendingSensor(null);
+    setShowConfirmDialog(false);
     onCancel();
   };
 
   const sortedReceivers = useMemo(() => {
-    console.log(
-      "existingReceivers:",
-      existingReceivers.map((r) => ({
-        receiverId: r.receiverId,
-        name: r.name,
-        latitude: r.latitude,
-        longitude: r.longitude,
-      }))
-    );
-
-    console.log("selectedLocation:", selectedLocation);
-
     const filteredReceivers = [...existingReceivers].filter((r) => {
       const validReceiverId =
-        r.receiverId && typeof r.receiverId === "string" && r.receiverId.trim() !== "";
+        r.receiverId &&
+        typeof r.receiverId === "string" &&
+        r.receiverId.trim() !== "";
       const validLatitude = !isNaN(parseFloat(String(r.latitude)));
       const validLongitude = !isNaN(parseFloat(String(r.longitude)));
-      if (!validReceiverId) console.log("Filtered out due to invalid receiverId:", r);
-      if (!validLatitude) console.log("Filtered out due to invalid latitude:", r);
-      if (!validLongitude) console.log("Filtered out due to invalid longitude:", r);
       return validReceiverId && validLatitude && validLongitude;
     });
-
-    console.log("filteredReceivers:", filteredReceivers);
 
     if (selectedLocation) {
       return filteredReceivers.sort((a, b) => {
@@ -250,155 +253,180 @@ export function AddSensorForm({
     return R * c;
   };
 
-  console.log(
-    "sortedReceivers:",
-    sortedReceivers.map((r) => ({
-      receiverId: r.receiverId,
-      name: r.name,
-      latitude: r.latitude,
-      longitude: r.longitude,
-    }))
-  );
-
-  // Ensure the current sensorId is included in the dropdown options during edit
   const sensorIdOptions = editingDevice
-    ? [...new Set([editingDevice.sensorId, ...unverifiedSensorIds])].filter(Boolean)
+    ? [...new Set([editingDevice.sensorId, ...unverifiedSensorIds])].filter(
+        Boolean
+      )
     : unverifiedSensorIds;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="sensorName">Sensor Name</Label>
-          <Input
-            id="sensorName"
-            name="sensorName"
-            placeholder="ILO-01"
-            value={formData.sensorName}
-            onChange={handleChange}
-            required
-          />
-        </div>
+    <>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="sensorName">Sensor Name</Label>
+            <Input
+              id="sensorName"
+              name="sensorName"
+              placeholder="ILO-01"
+              value={formData.sensorName}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="sensorId">Sensor ID</Label>
-          <Select
-            value={formData.sensorId}
-            onValueChange={(value) =>
-              setFormData((prev) => ({ ...prev, sensorId: value }))
-            }
-          >
-            <SelectTrigger id="sensorId">
-              <SelectValue placeholder="Select sensor ID..." />
-            </SelectTrigger>
-            <SelectContent>
-              {sensorIdOptions.length > 0 ? (
-                sensorIdOptions.map((id) => (
-                  <SelectItem key={id} value={id}>
-                    {id}
+          <div className="space-y-2">
+            <Label htmlFor="sensorId">Sensor ID</Label>
+            <Select
+              value={formData.sensorId}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, sensorId: value }))
+              }
+            >
+              <SelectTrigger id="sensorId">
+                <SelectValue placeholder="Select sensor ID..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sensorIdOptions.length > 0 ? (
+                  sensorIdOptions.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {id}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem disabled value="no-unverified-sensors">
+                    No unverified sensors
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem disabled value="no-unverified-sensors">
-                  No unverified sensors
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="receiverId">Receiver</Label>
-          <Select
-            value={formData.receiverId}
-            onValueChange={handleReceiverSelect}
-          >
-            <SelectTrigger id="receiverId">
-              <SelectValue placeholder="Select nearest receiver..." />
-            </SelectTrigger>
-            <SelectContent>
-              {sortedReceivers.length > 0 ? (
-                sortedReceivers.map((r) => (
-                  <SelectItem key={r.receiverId} value={r.receiverId}>
-                    {r.name || "(Unnamed Receiver)"} (
-                    {Number(r.latitude).toFixed(4)},{" "}
-                    {Number(r.longitude).toFixed(4)})
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="receiverId">Receiver</Label>
+            <Select
+              value={formData.receiverId}
+              onValueChange={handleReceiverSelect}
+            >
+              <SelectTrigger id="receiverId">
+                <SelectValue placeholder="Select nearest receiver..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedReceivers.length > 0 ? (
+                  sortedReceivers.map((r) => (
+                    <SelectItem key={r.receiverId} value={r.receiverId}>
+                      {r.name || "(Unnamed Receiver)"} (
+                      {Number(r.latitude).toFixed(4)},{" "}
+                      {Number(r.longitude).toFixed(4)})
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem disabled value="no-receivers">
+                    No receivers available
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem disabled value="no-receivers">
-                  No receivers available
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="location">Location</Label>
+            <Input
+              id="location"
+              name="location"
+              placeholder="Select from map..."
+              value={formData.location}
+              readOnly
+              tabIndex={-1}
+              className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="longitude">Longitude</Label>
+            <Input
+              id="longitude"
+              name="longitude"
+              placeholder="122.562100"
+              value={formData.longitude}
+              readOnly
+              tabIndex={-1}
+              className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="latitude">Latitude</Label>
+            <Input
+              id="latitude"
+              name="latitude"
+              placeholder="10.720200"
+              value={formData.latitude}
+              readOnly
+              tabIndex={-1}
+              className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
+            />
+          </div>
         </div>
 
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            name="location"
-            placeholder="Select from map..."
-            value={formData.location}
-            readOnly
-            tabIndex={-1}
-            className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
-          />
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setFormData({
+                sensorName: "",
+                sensorId: "",
+                receiverId: "",
+                longitude: "",
+                latitude: "",
+                location: "",
+              });
+              onCancel();
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            className="bg-[var(--orange-primary)] hover:bg-orange-600"
+          >
+            {editingDevice ? "Update" : "+ Add"}
+          </Button>
         </div>
+      </form>
 
-        <div className="space-y-2">
-          <Label htmlFor="longitude">Longitude</Label>
-          <Input
-            id="longitude"
-            name="longitude"
-            placeholder="122.562100"
-            value={formData.longitude}
-            readOnly
-            tabIndex={-1}
-            className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="latitude">Latitude</Label>
-          <Input
-            id="latitude"
-            name="latitude"
-            placeholder="10.720200"
-            value={formData.latitude}
-            readOnly
-            tabIndex={-1}
-            className="bg-gray-100 cursor-not-allowed select-none pointer-events-none"
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            setFormData({
-              sensorName: "",
-              sensorId: "",
-              receiverId: "",
-              longitude: "",
-              latitude: "",
-              location: "",
-            });
-            onCancel();
-          }}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent
+          className="w-[90vw] max-w-[400px] rounded-lg"
+          onClick={(e) => e.stopPropagation()}
         >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          className="bg-[var(--orange-primary)] hover:bg-orange-600"
-        >
-          {editingDevice ? "Update" : "+ Add"}
-        </Button>
-      </div>
-    </form>
+          <DialogHeader>
+            <DialogTitle className="text-base md:text-lg">
+              Confirm {editingDevice ? "Update" : "Add"} Sensor
+            </DialogTitle>
+            <DialogDescription className="text-sm md:text-base">
+              Are you sure you want to {editingDevice ? "update" : "add"} this
+              sensor? Please confirm the details.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              className="w-full sm:w-auto text-sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmSubmit}
+              className="bg-[var(--orange-primary)] hover:bg-orange-600 w-full sm:w-auto text-sm"
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
