@@ -1,6 +1,12 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { Input } from "@/components/ui/input";
@@ -48,6 +54,14 @@ function MapResizeHandler() {
     resizeObserver.observe(container);
     return () => resizeObserver.unobserve(container);
   }, [map]);
+  return null;
+}
+
+function MapViewUpdater({ position }: { position: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(position, 13);
+  }, [map, position]);
   return null;
 }
 
@@ -163,7 +177,7 @@ export function MapWidget({ onLocationSelect }: MapWidgetProps) {
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
+            attribution="© OpenStreetMap contributors"
           />
           <Marker
             position={position}
@@ -177,6 +191,7 @@ export function MapWidget({ onLocationSelect }: MapWidgetProps) {
             }}
           />
           <MapResizeHandler />
+          <MapViewUpdater position={position} />
         </MapContainer>
         {/* Re-add zoom buttons in bottom right */}
         <div className="leaflet-bottom leaflet-right z-[1000] absolute bottom-2 right-2">
