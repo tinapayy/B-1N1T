@@ -1,4 +1,4 @@
-// api/analytics/summary/route.ts
+// /api/analytics/summary/route.ts
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
         ? "year"
         : "week";
 
-    if (!sensorId || typeof sensorId !== "string") {
+    if (!sensorId) {
       return NextResponse.json({ error: "Missing sensorId" }, { status: 400 });
     }
 
@@ -48,15 +48,15 @@ export async function GET(req: Request) {
 
     switch (timeframe) {
       case "week":
-        startDate = subDays(startOfDay(now), 6);
+        startDate = subDays(startOfDay(now), 6); // 6 trailing + today
         limit = 7;
         break;
       case "month":
-        startDate = subMonths(startOfMonth(now), 11);
+        startDate = subMonths(startOfMonth(now), 11); // 11 trailing + current month
         limit = 12;
         break;
       case "year":
-        startDate = startOfYear(subYears(now, 3));
+        startDate = startOfYear(subYears(now, 3)); // 3 trailing + current year
         limit = 4;
         break;
     }
@@ -74,32 +74,21 @@ export async function GET(req: Request) {
         const data = doc.data();
         const rawTimestamp = data[dateField];
         const dateObj = rawTimestamp?.toDate?.() ?? null;
-
-        if (!dateObj) {
-          console.warn(`[SKIP] Invalid timestamp in ${doc.id}`);
-          return null;
-        }
-
-        const localDate = new Date(dateObj.getTime() + 8 * 60 * 60 * 1000); // UTC+8
+        if (!dateObj) return null;
 
         return {
-          timestamp: localDate.toISOString().slice(0, 10),
+          timestamp: dateObj.toISOString().slice(0, 10),
           avgTemp: data.avgTemp ?? null,
+          avgHumidity: data.avgHumidity ?? null,
           avgHeatIndex: data.avgHeatIndex ?? null,
-          maxTemp: data.maxTemp ?? null,
-          maxHeatIndex: data.maxHeatIndex ?? null,
-          alertCount: data.alertCount ?? 0,
           isPartial: typeof data.isPartial === "boolean" ? data.isPartial : false,
         };
       })
-      .filter((entry) => entry !== null);
+      .filter((r) => r !== null);
 
     return NextResponse.json(results);
   } catch (err: any) {
     console.error("Error in /api/analytics/summary:", err.message, err.stack);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
