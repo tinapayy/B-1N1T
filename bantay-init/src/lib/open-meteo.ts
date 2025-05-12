@@ -10,6 +10,7 @@ export interface HourlyForecastData {
   time: string;
   temperature: number;
   condition: "sunny" | "partly-cloudy" | "cloudy" | "rain" | "storm";
+  timestamp: number; // Added for filtering
 }
 
 export interface DailyForecastData {
@@ -64,11 +65,13 @@ export async function fetchHourlyForecast(
     );
     if (!response.ok) throw new Error("Failed to fetch hourly forecast");
     const data = await response.json();
-    return data.hourly.time.slice(0, 12).map((time: string, index: number) => ({
+    // Return 48 hours of data to ensure enough range for filtering
+    return data.hourly.time.slice(0, 48).map((time: string, index: number) => ({
       time: new Date(time).toLocaleTimeString([], {
         hour: "numeric",
         hour12: true,
       }),
+      timestamp: new Date(time).getTime(), // Add timestamp for filtering
       temperature: Math.round(data.hourly.temperature_2m[index]),
       condition: getWeatherCondition(data.hourly.weathercode[index]),
     }));

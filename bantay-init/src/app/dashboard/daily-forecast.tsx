@@ -66,8 +66,8 @@ export function DailyForecast({ latitude, longitude }: DailyForecastProps) {
             <p className="text-sm text-gray-500">by Open-Meteo</p>
           </div>
         </CardHeader>
-        <CardContent className="pt-4 h-full overflow-y-auto">
-          <div className="space-y-4">
+        <CardContent className="pt-4 h-[calc(100%-70px)] overflow-y-scroll scrollbar-hide">
+          <div className="space-y-2">
             {forecasts.map((forecast, index) => {
               const { weatherIconPath } = getWeatherIconInfo(
                 forecast.condition

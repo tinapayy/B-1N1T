@@ -12,6 +12,14 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   getUnverifiedReceiverIds,
   addVerifiedReceiver,
 } from "@/lib/adminDevices";
@@ -59,7 +67,11 @@ export function AddReceiverForm({
     wifiPassword: "",
   });
 
-  const [unverifiedReceiverIds, setUnverifiedReceiverIds] = useState<string[]>([]);
+  const [unverifiedReceiverIds, setUnverifiedReceiverIds] = useState<string[]>(
+    []
+  );
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingReceiver, setPendingReceiver] = useState<any | null>(null);
 
   useEffect(() => {
     const loadUnverified = async () => {
@@ -104,7 +116,6 @@ export function AddReceiverForm({
 
     const { receiverId, latitude, longitude } = formData;
 
-    // In edit mode, make receiverId optional
     if (!editingDevice && (!receiverId || !latitude || !longitude)) {
       alert("Missing required fields.");
       return;
@@ -117,8 +128,10 @@ export function AddReceiverForm({
 
     const newReceiver = {
       name: formData.name.trim(),
-      // Use existing receiverId if formData.receiverId is empty during edit
-      receiverId: editingDevice && !formData.receiverId ? editingDevice.receiverId : receiverId,
+      receiverId:
+        editingDevice && !formData.receiverId
+          ? editingDevice.receiverId
+          : receiverId,
       location: formData.location,
       longitude: parseFloat(formData.longitude),
       latitude: parseFloat(formData.latitude),
@@ -129,9 +142,16 @@ export function AddReceiverForm({
       status: editingDevice?.status || "Offline",
     };
 
+    setPendingReceiver(newReceiver);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!pendingReceiver) return;
+
     try {
-      await addVerifiedReceiver(newReceiver.receiverId, newReceiver);
-      onAdd(newReceiver);
+      await addVerifiedReceiver(pendingReceiver.receiverId, pendingReceiver);
+      onAdd(pendingReceiver);
     } catch (err) {
       console.error("Error verifying receiver:", err);
       alert("Verification failed. See console for details.");
@@ -147,114 +167,154 @@ export function AddReceiverForm({
       wifiSSID: "",
       wifiPassword: "",
     });
+    setPendingReceiver(null);
+    setShowConfirmDialog(false);
     onCancel();
   };
 
-  // Ensure the current receiverId is included in the dropdown options during edit
   const receiverIdOptions = editingDevice
-    ? [...new Set([editingDevice.receiverId, ...unverifiedReceiverIds])].filter(Boolean)
+    ? [...new Set([editingDevice.receiverId, ...unverifiedReceiverIds])].filter(
+        Boolean
+      )
     : unverifiedReceiverIds;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="name">Receiver Name</Label>
-          <Input
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            placeholder="RCV-01"
-            required
-          />
-        </div>
+    <>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="name">Receiver Name</Label>
+            <Input
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="RCV-01"
+              required
+            />
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="receiverId">Receiver Id</Label>
-          <Select
-            value={formData.receiverId}
-            onValueChange={(value) =>
-              setFormData((prev) => ({ ...prev, receiverId: value }))
-            }
-          >
-            <SelectTrigger id="receiverId">
-              <SelectValue placeholder="Select receiver Id..." />
-            </SelectTrigger>
-            <SelectContent>
-              {receiverIdOptions.length > 0 ? (
-                receiverIdOptions.map((id) => (
-                  <SelectItem key={id} value={id}>
-                    {id}
+          <div className="space-y-2">
+            <Label htmlFor="receiverId">Receiver Id</Label>
+            <Select
+              value={formData.receiverId}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, receiverId: value }))
+              }
+            >
+              <SelectTrigger id="receiverId">
+                <SelectValue placeholder="Select receiver Id..." />
+              </SelectTrigger>
+              <SelectContent>
+                {receiverIdOptions.length > 0 ? (
+                  receiverIdOptions.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {id}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem disabled value="no-unverified-receivers">
+                    No unverified receivers
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem disabled value="no-unverified-receivers">
-                  No unverified receivers
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="wifiSSID">Wi-Fi SSID</Label>
+            <Input
+              name="wifiSSID"
+              value={formData.wifiSSID}
+              onChange={handleChange}
+              placeholder="Enter SSID"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="wifiPassword">Wi-Fi Password</Label>
+            <Input
+              name="wifiPassword"
+              value={formData.wifiPassword}
+              onChange={handleChange}
+              placeholder="Enter Password"
+              type="password"
+              required
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="location">Location</Label>
+            <Input
+              value={formData.location}
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="longitude">Longitude</Label>
+            <Input
+              value={formData.longitude}
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="latitude">Latitude</Label>
+            <Input
+              value={formData.latitude}
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="wifiSSID">Wi-Fi SSID</Label>
-          <Input
-            name="wifiSSID"
-            value={formData.wifiSSID}
-            onChange={handleChange}
-            placeholder="Enter SSID"
-            required
-          />
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            className="bg-[var(--orange-primary)] hover:bg-orange-600"
+          >
+            {editingDevice ? "Update" : "+ Add"}
+          </Button>
         </div>
+      </form>
 
-        <div className="space-y-2">
-          <Label htmlFor="wifiPassword">Wi-Fi Password</Label>
-          <Input
-            name="wifiPassword"
-            value={formData.wifiPassword}
-            onChange={handleChange}
-            placeholder="Enter Password"
-            type="password"
-            required
-          />
-        </div>
-
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="location">Location</Label>
-          <Input
-            value={formData.location}
-            readOnly
-            className="bg-gray-100 cursor-not-allowed"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="longitude">Longitude</Label>
-          <Input
-            value={formData.longitude}
-            readOnly
-            className="bg-gray-100 cursor-not-allowed"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="latitude">Latitude</Label>
-          <Input
-            value={formData.latitude}
-            readOnly
-            className="bg-gray-100 cursor-not-allowed"
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" className="bg-[var(--orange-primary)] hover:bg-orange-600">
-          {editingDevice ? "Update" : "+ Add"}
-        </Button>
-      </div>
-    </form>
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent
+          className="w-[90vw] max-w-[400px] rounded-lg"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-base md:text-lg">
+              Confirm {editingDevice ? "Update" : "Add"} Receiver
+            </DialogTitle>
+            <DialogDescription className="text-sm md:text-base">
+              Are you sure you want to {editingDevice ? "update" : "add"} this
+              receiver? Please confirm the details.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              className="w-full sm:w-auto text-sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmSubmit}
+              className="bg-[var(--orange-primary)] hover:bg-orange-600 w-full sm:w-auto text-sm"
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -18,8 +18,13 @@ interface HourlyForecastProps {
   longitude: number;
 }
 
-const formatCondition = (condition: HourlyForecastData["condition"]) => {
-  return condition
+const formatCondition = (
+  condition: HourlyForecastData["condition"],
+  isNight: boolean
+) => {
+  const displayCondition =
+    isNight && condition === "sunny" ? "clear" : condition;
+  return displayCondition
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
@@ -42,7 +47,18 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
       setError(null);
       try {
         const data = await fetchHourlyForecast(latitude, longitude);
-        setForecasts(data);
+        const now = new Date();
+        const startTime = new Date(now);
+        startTime.setHours(now.getHours() - 3, 0, 0, 0);
+        const endTime = new Date(now);
+        endTime.setHours(now.getHours() + 20, 0, 0, 0);
+
+        const filteredData = data.filter((forecast) => {
+          const forecastTime = new Date(forecast.timestamp);
+          return forecastTime >= startTime && forecastTime <= endTime;
+        });
+
+        setForecasts(filteredData);
       } catch (err) {
         setError("Failed to fetch hourly forecast");
       }
@@ -54,17 +70,8 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
   const checkScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-      const canScrollLeft = scrollLeft > 0;
-      const canScrollRight = scrollLeft + clientWidth < scrollWidth - 1;
-      setShowLeftIndicator(canScrollLeft);
-      setShowRightIndicator(canScrollRight);
-      console.log("Scroll State:", {
-        scrollLeft,
-        scrollWidth,
-        clientWidth,
-        canScrollLeft,
-        canScrollRight,
-      });
+      setShowLeftIndicator(scrollLeft > 0);
+      setShowRightIndicator(scrollLeft + clientWidth < scrollWidth - 1);
     }
   };
 
@@ -100,13 +107,7 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
     const handleResize = () => {
       if (scrollRef.current) {
         const { scrollWidth, clientWidth } = scrollRef.current;
-        const canScrollRight = scrollWidth > clientWidth;
-        setShowRightIndicator(canScrollRight);
-        console.log("Resize State:", {
-          scrollWidth,
-          clientWidth,
-          canScrollRight,
-        });
+        setShowRightIndicator(scrollWidth > clientWidth);
       }
     };
 
@@ -114,6 +115,17 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
     window.addEventListener("resize", handleResize);
     if (scrollRef.current) {
       scrollRef.current.addEventListener("scroll", checkScroll);
+      const currentHourIndex = forecasts.findIndex((forecast) => {
+        const forecastHour = new Date(forecast.timestamp).getHours();
+        return forecastHour === new Date().getHours();
+      });
+      if (currentHourIndex >= 1) {
+        const cardWidth = 125;
+        scrollRef.current.scrollTo({
+          left: (currentHourIndex - 1) * cardWidth + 20,
+          behavior: "smooth",
+        });
+      }
     }
 
     return () => {
@@ -138,17 +150,18 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
 
   return (
     <TooltipProvider>
-      <div className="overflow-hidden relative">
-        <CardHeader className="pb-0">
+      <div className="h-[320px] overflow-hidden relative">
+        <CardHeader className="pb-2">
           <div className="space-y-1">
             <h2 className="text-2xl font-semibold">Hourly Forecast</h2>
             <p className="text-sm text-gray-500">by Open-Meteo</p>
           </div>
         </CardHeader>
-        <CardContent className="pt-6">
-          <div className="relative">
-            {/* Mobile View (Column Layout) */}
-            <div className="sm:hidden grid grid-cols-1 gap-3">
+
+        <CardContent className="pt-4 h-[calc(100%-70px)]">
+          <div className="relative h-full">
+            {/* Mobile View */}
+            <div className="sm:hidden h-full overflow-y-scroll scrollbar-hide grid grid-cols-1 gap-3">
               {forecasts.map((forecast, index) => {
                 const {
                   weatherIconPath,
@@ -206,7 +219,9 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
                     </TooltipTrigger>
                     <TooltipContent className="bg-white text-gray-800 rounded-lg shadow-lg p-2 text-sm">
                       <div className="flex gap-2">
-                        <span>{formatCondition(forecast.condition)}</span>
+                        <span>
+                          {formatCondition(forecast.condition, isNight)}
+                        </span>
                         <span>•</span>
                         <span>Temperature: {forecast.temperature}°C</span>
                       </div>
@@ -216,7 +231,7 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
               })}
             </div>
 
-            {/* Desktop View (Original Row Layout) */}
+            {/* Desktop View */}
             <div
               ref={scrollRef}
               className="hidden sm:flex overflow-x-auto pb-4 gap-4 scrollbar-hide scroll-smooth cursor-grab active:cursor-grabbing"
@@ -239,7 +254,7 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        className="flex-none w-[125px] h-[180px] bg-[#2f2f2f] rounded-[24px] flex flex-col items-center justify-between p-6 text-white cursor-pointer"
+                        className="flex-none w-[120px] h-[185px] bg-[#2f2f2f] rounded-[24px] flex flex-col items-center justify-between p-6 text-white cursor-pointer mr-0.5"
                         style={{
                           boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.1)",
                           background:
@@ -280,7 +295,9 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
                     </TooltipTrigger>
                     <TooltipContent className="bg-white text-gray-800 rounded-lg shadow-lg p-2 text-sm">
                       <div className="flex gap-2">
-                        <span>{formatCondition(forecast.condition)}</span>
+                        <span>
+                          {formatCondition(forecast.condition, isNight)}
+                        </span>
                         <span>•</span>
                         <span>Temperature: {forecast.temperature}°C</span>
                       </div>
@@ -290,21 +307,21 @@ export function HourlyForecast({ latitude, longitude }: HourlyForecastProps) {
               })}
             </div>
 
-            {/* Left Scroll Button (Desktop only) */}
+            {/* Chevron Scroll Buttons */}
             {showLeftIndicator && (
               <button
                 onClick={() => scroll("left")}
                 className="absolute left-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer hidden sm:block"
+                aria-label="Scroll hourly forecast left"
               >
                 <ChevronLeft className="w-6 h-6 text-white" />
               </button>
             )}
-
-            {/* Right Scroll Button (Desktop only) */}
             {showRightIndicator && (
               <button
                 onClick={() => scroll("right")}
                 className="absolute right-0 top-1/2 -translate-y-1/2 p-2 bg-gray-800/50 rounded-full cursor-pointer hidden sm:block"
+                aria-label="Scroll hourly forecast right"
               >
                 <ChevronRight className="w-6 h-6 text-white" />
               </button>
