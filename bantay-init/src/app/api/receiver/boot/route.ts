@@ -17,11 +17,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing receiverId" }, { status: 400 });
     }
 
-    const ref = doc(firestore, "unverified_receivers", receiverId);
-    const snap = await getDoc(ref);
+    // Check if already verified
+    const verifiedRef = doc(firestore, "verified_receivers", receiverId);
+    const verifiedSnap = await getDoc(verifiedRef);
 
-    if (!snap.exists()) {
-      await setDoc(ref, {
+    if (verifiedSnap.exists()) {
+      return NextResponse.json({ status: "already verified" }, { status: 200 });
+    }
+
+    // Check if already unverified
+    const unverifiedRef = doc(firestore, "unverified_receivers", receiverId);
+    const unverifiedSnap = await getDoc(unverifiedRef);
+
+    if (!unverifiedSnap.exists()) {
+      await setDoc(unverifiedRef, {
         receiverId: receiverId,
         macAddress: mac || "N/A",
         createdAt: serverTimestamp(),
