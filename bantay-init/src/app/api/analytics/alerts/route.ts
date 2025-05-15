@@ -47,15 +47,16 @@ export async function GET(req: NextRequest) {
       .orderBy("timestamp", "desc")
       .get();
 
-    const alerts = snapshot.docs.map((doc) => {
-      const d = doc.data();
-      return {
-        sensorId: d.sensorId,
-        alertType: d.alertType, // updated field
-        heatIndex: d.heatIndexValue ?? d.heatIndex ?? null, // schema fallback
-        timestamp: d.timestamp.toDate().toISOString(),
-      };
-    });
+      const alerts = snapshot.docs.map((doc) => {
+        const d = doc.data();
+        return {
+          sensorId: d.sensorId,
+          alertType: d.alertCategory ?? d.alertType ?? "Unknown",
+          heatIndex: d.heatIndexValue ?? d.heatIndex ?? null, // schema fallback
+          timestamp: d.timestamp.toDate().toISOString(),
+        };
+      });
+      
 
     return NextResponse.json({
       alertCount: alerts.length,
