@@ -12,13 +12,13 @@ import {
 } from "date-fns";
 
 const COLLECTION_MAP: Record<"week" | "month" | "year", string> = {
-  week: "analytics_weekly_summary",
+  week: "analytics_daily_summary", // now using daily summaries for weekly
   month: "analytics_monthly_summary",
   year: "analytics_yearly_summary",
 };
 
 const DATE_FIELD_MAP: Record<"week" | "month" | "year", string> = {
-  week: "weekStart",
+  week: "date",
   month: "monthStart",
   year: "yearStart",
 };
@@ -48,22 +48,22 @@ export async function GET(req: Request) {
 
     switch (timeframe) {
       case "week":
-        startDate = subDays(startOfDay(now), 6); // 6 trailing + today
+        startDate = subDays(startOfDay(now), 6);
         limit = 7;
         break;
       case "month":
-        startDate = subMonths(startOfMonth(now), 11); // 11 trailing + current month
+        startDate = subMonths(startOfMonth(now), 11);
         limit = 12;
         break;
       case "year":
-        startDate = startOfYear(subYears(now, 3)); // 3 trailing + current year
+        startDate = startOfYear(subYears(now, 3));
         limit = 4;
         break;
     }
 
     const snapshot = await adminDb
       .collection(collection)
-      .where("sensorID", "==", sensorId)
+      .where("sensorId", "==", sensorId)
       .where(dateField, ">=", startDate)
       .orderBy(dateField, "asc")
       .limit(limit)
@@ -89,6 +89,9 @@ export async function GET(req: Request) {
     return NextResponse.json(results);
   } catch (err: any) {
     console.error("Error in /api/analytics/summary:", err.message, err.stack);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
