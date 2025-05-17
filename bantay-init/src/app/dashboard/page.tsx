@@ -29,40 +29,36 @@ export default function Dashboard() {
     longitude: 122.2352,
   });
 
+  const [selectedSensorId, setSelectedSensorId] = useState("SENSOR_001");
+
   return (
     <div className="flex-1 overflow-auto p-4 lg:p-8 pb-8 lg:pb-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Weather Gauge + Search Bar */}
-        <SuspenseCard
-          height="min-h-[400px]"
-          className="bg-white rounded-3xl shadow-md col-span-1"
-        >
+        <SuspenseCard height="min-h-[400px]" className="bg-white rounded-3xl shadow-md col-span-1">
           <Card className="bg-white rounded-3xl shadow-md col-span-1 min-h-[400px]">
             <CardContent className="lg:p-8 p-4 space-y-4">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                <LocationSearch
-                  mode="forecast"
-                  initialLocation="Miagao, Iloilo"
-                  onLocationChange={(loc) => setLocation(loc)}
-                />
+                  <LocationSearch
+                    mode="forecast"
+                    initialLocation="Miagao, Iloilo"
+                    onLocationChange={(loc) => setLocation(loc)}
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <NotificationDropdown />
                 </div>
               </div>
-              <WeatherGauge sensorId="SENSOR_001" />
-              </CardContent>
+              <WeatherGauge sensorId={selectedSensorId} />
+            </CardContent>
           </Card>
         </SuspenseCard>
 
         {/* Right Column: Map */}
-        <SuspenseCard
-          height="min-h-[400px]"
-          className="col-span-1 rounded-3xl shadow-md"
-        >
+        <SuspenseCard height="min-h-[400px]" className="col-span-1 rounded-3xl shadow-md">
           <Card className="col-span-1 min-h-[400px] flex items-center justify-center text-gray-500 rounded-3xl shadow-md">
-            <MapWidget />
+            <MapWidget onSensorSelect={setSelectedSensorId} />
           </Card>
         </SuspenseCard>
       </div>
@@ -70,10 +66,7 @@ export default function Dashboard() {
       {/* Second Row: Daily Forecast (1/3) | Hourly Forecast (2/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         {/* Daily Forecast Section */}
-        <SuspenseCard
-          height="min-h-[320px]"
-          className="col-span-1 bg-white rounded-3xl shadow-md"
-        >
+        <SuspenseCard height="min-h-[320px]" className="col-span-1 bg-white rounded-3xl shadow-md">
           <Card className="col-span-1 bg-white rounded-3xl shadow-md min-h-[320px] max-h-[350px] overflow-auto">
             <CardContent className="p-4 h-full">
               <DailyForecast
@@ -85,10 +78,7 @@ export default function Dashboard() {
         </SuspenseCard>
 
         {/* Hourly Forecast Section */}
-        <SuspenseCard
-          height="min-h-[320px]"
-          className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-md"
-        >
+        <SuspenseCard height="min-h-[320px]" className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-md">
           <Card className="col-span-1 lg:col-span-2 bg-white rounded-3xl shadow-md min-h-[320px] max-h-[350px] overflow-auto">
             <CardContent className="p-4 h-full">
               <HourlyForecast

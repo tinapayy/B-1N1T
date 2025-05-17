@@ -139,7 +139,7 @@ export function AddReceiverForm({
       wifiSSID: formData.wifiSSID,
       wifiPassword: formData.wifiPassword,
       installDate: editingDevice?.installDate || new Date().toISOString(),
-      status: editingDevice?.status || "Offline",
+      status: editingDevice?.status || "Online",
     };
 
     setPendingReceiver(newReceiver);

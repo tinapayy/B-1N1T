@@ -1,7 +1,6 @@
-// /app/api/analytics/bar-summary/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
+import { format, subDays } from "date-fns";
 
 const metricFieldMap: Record<string, { min: string; max: string }> = {
   temperature: { min: "minTemp", max: "maxTemp" },
@@ -14,8 +13,7 @@ const dayLabels = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 function getTrailing7Days(endDate: Date): { dateStr: string; label: string }[] {
   const result: { dateStr: string; label: string }[] = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(endDate);
-    d.setDate(d.getDate() - i);
+    const d = subDays(endDate, i);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
@@ -34,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     if (!sensorId || !metric || !(metric in metricFieldMap)) {
       return NextResponse.json(
-        { error: "Missing or invalid params" },
+        { error: "Missing or invalid parameters" },
         { status: 400 }
       );
     }
@@ -60,7 +58,10 @@ export async function GET(req: NextRequest) {
       return {
         day: label,
         min,
-        delta: min !== null && max !== null ? max - min : 0,
+        delta:
+          typeof min === "number" && typeof max === "number"
+            ? max - min
+            : 0,
         isToday: dateStr === todayStr,
       };
     });

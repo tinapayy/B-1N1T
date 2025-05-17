@@ -5,11 +5,7 @@ import useSWR from "swr";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import {
-  Thermometer,
-  Flame,
-  Server,
-} from "lucide-react";
+import { Thermometer, Flame, Server } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -22,7 +18,11 @@ const ZoomHandler = ({ setZoom }: { setZoom: (zoom: number) => void }) => {
   return null;
 };
 
-const MapWidget = () => {
+interface MapWidgetProps {
+  onSensorSelect?: (sensorId: string) => void;
+}
+
+const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
   const [zoom, setZoom] = useState(13);
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [subscribedSensors, setSubscribedSensors] = useState<string[]>([]);
@@ -35,7 +35,7 @@ const MapWidget = () => {
 
   const getAlertColor = (heatIndex: number) => {
     if (heatIndex < 27) return "#00A65A";
-    if (heatIndex < 32) return "#FFFF00";
+    if (heatIndex < 32) return "#FFD700";
     if (heatIndex < 41) return "#FFB029";
     if (heatIndex < 51) return "#FF7123";
     return "#CD0201";
@@ -47,24 +47,32 @@ const MapWidget = () => {
       html: `<div style="
         background-color: ${color};
         color: white;
-        padding: 6px 10px;
+        padding: 8px 8px;
         border-radius: 8px;
         font-weight: bold;
-        font-size: 14px;
+        font-size: 12px;
         text-align: center;
         box-shadow: 0 0 8px rgba(0,0,0,0.3);
-        ${selectedSensor === id ? "transform: scale(1.1); border: 2px solid white;" : ""}
-      ">${heatIndex}°C</div>`,
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 80px;
+        ${
+          selectedSensor === id
+            ? "transform: scale(1.1); border: 2px solid white;"
+            : ""
+        }
+      ">${heatIndex.toFixed(1)}°C</div>`,
       className: "custom-marker",
-      iconSize: [50, 50],
-      iconAnchor: [25, 25],
+      iconSize: [65, 50],
+      iconAnchor: [40, 25],
     });
   };
 
   const createReceiverIcon = () =>
     L.divIcon({
       html: `<div style="
-        background-color: #777;
+        background-color: #ff0000;
         width: 16px;
         height: 16px;
         border-radius: 9999px;
@@ -76,7 +84,11 @@ const MapWidget = () => {
     });
 
   const handleMarkerClick = (sensorId: string) => {
-    setSelectedSensor((prev) => (prev === sensorId ? null : sensorId));
+    const newSelected = selectedSensor === sensorId ? null : sensorId;
+    setSelectedSensor(newSelected);
+    if (onSensorSelect && newSelected) {
+      onSensorSelect(newSelected);
+    }
   };
 
   const handleSubscribeToggle = (sensorId: string, location: string) => {
@@ -93,10 +105,15 @@ const MapWidget = () => {
     });
   };
 
+  const truncateLocation = (location: string, maxLength: number = 20) => {
+    if (location.length <= maxLength) return location;
+    return `${location.slice(0, maxLength - 3)}...`;
+  };
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
-        center={[10.7202, 122.5621]}
+        center={[10.6442, 122.2352]} // Miagao, Iloilo coordinates
         zoom={zoom}
         className="h-full w-full rounded-xl"
         scrollWheelZoom
@@ -106,7 +123,7 @@ const MapWidget = () => {
         <ZoomHandler setZoom={setZoom} />
         <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
 
-        {/* 🔥 Sensor Markers */}
+        {/* Sensor Markers */}
         {sensorData.map((sensor: any) => (
           <Marker
             key={sensor.sensorId}
@@ -116,7 +133,7 @@ const MapWidget = () => {
           />
         ))}
 
-        {/* 📡 Receiver Markers */}
+        {/* Receiver Markers */}
         {receiverData.map((receiver: any) => (
           <Marker
             key={receiver.receiverId}
@@ -126,18 +143,27 @@ const MapWidget = () => {
         ))}
       </MapContainer>
 
-      {/* ℹ️ Sensor popup */}
+      {/* Sensor popup */}
       {selectedSensor && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white p-3 rounded-lg shadow-lg z-[1000] text-sm" style={{ minWidth: "200px", maxWidth: "90%" }}>
+        <div
+          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white p-3 rounded-lg shadow-lg z-[1000] text-sm"
+          style={{ minWidth: "200px", maxWidth: "90%" }}
+        >
           {(() => {
-            const sensor = sensorData.find((s: any) => s.sensorId === selectedSensor);
+            const sensor = sensorData.find(
+              (s: any) => s.sensorId === selectedSensor
+            );
             if (!sensor) return null;
             const isSubscribed = subscribedSensors.includes(sensor.sensorId);
             return (
               <>
-                <div className="flex justify-between mb-1">
-                  <div className="font-bold">{sensor.location}</div>
-                  <div className="text-gray-500 text-sm">ID: {sensor.sensorId}</div>
+                <div className="flex flex-col mb-1">
+                  <div className="font-bold">
+                    {truncateLocation(sensor.location, 40)}
+                  </div>
+                  <div className="text-gray-500 text-sm">
+                    ID: {sensor.sensorId}
+                  </div>
                 </div>
                 <div className="flex justify-between mb-2">
                   <div className="flex items-center">
@@ -153,7 +179,9 @@ const MapWidget = () => {
                   <input
                     type="checkbox"
                     checked={isSubscribed}
-                    onChange={() => handleSubscribeToggle(sensor.sensorId, sensor.location)}
+                    onChange={() =>
+                      handleSubscribeToggle(sensor.sensorId, sensor.location)
+                    }
                     className="mr-2 h-4 w-4 text-[var(--orange-primary)] border-gray-300 rounded focus:ring-[var(--orange-primary)]"
                   />
                   <span>Subscribe to this sensor for alerts</span>
@@ -164,14 +192,14 @@ const MapWidget = () => {
         </div>
       )}
 
-      {/* ✅ Toast feedback */}
+      {/* Toast feedback */}
       {confirmation && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-[var(--orange-primary)] text-white p-2 rounded-lg shadow-lg z-[1000] text-sm animate-fade-in-out" style={{ minWidth: "200px", maxWidth: "90%" }}>
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-[var(--orange-primary)] text-white p-2 rounded-lg shadow-lg z-[1000] text-sm animate-fade-in-out">
           {confirmation}
         </div>
       )}
 
-      {/* 📋 Subscribed list toggle */}
+      {/* Subscribed list toggle */}
       <button
         onClick={() => setShowSubscribedList((prev) => !prev)}
         className="absolute bottom-4 right-4 bg-[var(--orange-primary)] text-white p-2 rounded-full shadow-lg z-[10] hover:bg-[var(--dark-gray-1)] transition-colors"
@@ -179,7 +207,7 @@ const MapWidget = () => {
         <Server className="w-5 h-5" />
       </button>
 
-      {/* 🗂 Subscribed Sensors */}
+      {/* Subscribed Sensors */}
       {showSubscribedList && (
         <div className="absolute bottom-16 right-4 bg-white p-4 rounded-lg shadow-lg z-[1000] text-sm w-64 max-h-64 overflow-y-auto">
           <h3 className="font-bold mb-2">Subscribed Sensors</h3>
@@ -187,16 +215,25 @@ const MapWidget = () => {
             <p className="text-gray-500 text-xs">No sensors subscribed.</p>
           ) : (
             subscribedSensors.map((sensorId) => {
-              const sensor = sensorData.find((s: any) => s.sensorId === sensorId);
+              const sensor = sensorData.find(
+                (s: any) => s.sensorId === sensorId
+              );
               if (!sensor) return null;
               return (
-                <div key={sensor.sensorId} className="flex items-center justify-between py-1 border-b border-gray-200 last:border-b-0">
-                  <span className="text-xs">{sensor.location}</span>
+                <div
+                  key={sensor.sensorId}
+                  className="flex items-center justify-between py-1 border-b border-gray-200 last:border-b-0"
+                >
+                  <span className="text-xs">
+                    {truncateLocation(sensor.location)}
+                  </span>
                   <label className="flex items-center text-xs cursor-pointer">
                     <input
                       type="checkbox"
                       checked={true}
-                      onChange={() => handleSubscribeToggle(sensor.sensorId, sensor.location)}
+                      onChange={() =>
+                        handleSubscribeToggle(sensor.sensorId, sensor.location)
+                      }
                       className="ml-2 h-4 w-4 text-[var(--orange-primary)] border-gray-300 rounded focus:ring-[var(--orange-primary)]"
                     />
                   </label>

@@ -1,4 +1,4 @@
-// api/analytics/summary/route.ts
+// /api/analytics/summary/route.ts
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
@@ -12,13 +12,13 @@ import {
 } from "date-fns";
 
 const COLLECTION_MAP: Record<"week" | "month" | "year", string> = {
-  week: "analytics_weekly_summary",
+  week: "analytics_daily_summary", // now using daily summaries for weekly
   month: "analytics_monthly_summary",
   year: "analytics_yearly_summary",
 };
 
 const DATE_FIELD_MAP: Record<"week" | "month" | "year", string> = {
-  week: "weekStart",
+  week: "date",
   month: "monthStart",
   year: "yearStart",
 };
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
         ? "year"
         : "week";
 
-    if (!sensorId || typeof sensorId !== "string") {
+    if (!sensorId) {
       return NextResponse.json({ error: "Missing sensorId" }, { status: 400 });
     }
 
@@ -63,7 +63,7 @@ export async function GET(req: Request) {
 
     const snapshot = await adminDb
       .collection(collection)
-      .where("sensorID", "==", sensorId)
+      .where("sensorId", "==", sensorId)
       .where(dateField, ">=", startDate)
       .orderBy(dateField, "asc")
       .limit(limit)
@@ -74,31 +74,23 @@ export async function GET(req: Request) {
         const data = doc.data();
         const rawTimestamp = data[dateField];
         const dateObj = rawTimestamp?.toDate?.() ?? null;
-
-        if (!dateObj) {
-          console.warn(`[SKIP] Invalid timestamp in ${doc.id}`);
-          return null;
-        }
-
-        const localDate = new Date(dateObj.getTime() + 8 * 60 * 60 * 1000); // UTC+8
+        if (!dateObj) return null;
 
         return {
-          timestamp: localDate.toISOString().slice(0, 10),
+          timestamp: dateObj.toISOString().slice(0, 10),
           avgTemp: data.avgTemp ?? null,
+          avgHumidity: data.avgHumidity ?? null,
           avgHeatIndex: data.avgHeatIndex ?? null,
-          maxTemp: data.maxTemp ?? null,
-          maxHeatIndex: data.maxHeatIndex ?? null,
-          alertCount: data.alertCount ?? 0,
           isPartial: typeof data.isPartial === "boolean" ? data.isPartial : false,
         };
       })
-      .filter((entry) => entry !== null);
+      .filter((r) => r !== null);
 
     return NextResponse.json(results);
   } catch (err: any) {
     console.error("Error in /api/analytics/summary:", err.message, err.stack);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal Server Error" },
       { status: 500 }
     );
   }

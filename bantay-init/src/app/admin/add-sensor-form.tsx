@@ -284,7 +284,7 @@ export function AddSensorForm({
               }
             >
               <SelectTrigger id="sensorId">
-                <SelectValue placeholder="Select sensor ID..." />
+                <SelectValue placeholder="Add or edit sensors..." />
               </SelectTrigger>
               <SelectContent>
                 {sensorIdOptions.length > 0 ? (

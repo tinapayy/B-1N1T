@@ -25,14 +25,19 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #define WIFI_PASSWORD "minecraft@259"
 
 // --- Backend Endpoints ---
-#define UPLOAD_ENDPOINT "http://192.168.1.3:3000/api/receiver/upload"
-#define RECEIVER_BOOT_ENDPOINT "http://192.168.1.3:3000/api/receiver/boot"
-#define SENSOR_BOOT_ENDPOINT "http://192.168.1.3:3000/api/sensor/boot"
+#define UPLOAD_ENDPOINT "http://192.168.1.11:3000/api/receiver/upload"
+#define RECEIVER_BOOT_ENDPOINT "http://192.168.1.11:3000/api/receiver/boot"
+#define SENSOR_BOOT_ENDPOINT "http://192.168.1.11:3000/api/sensor/boot"
 
 // --- Globals ---
 String sensorId;
 float temperature, humidity, heatIndex;
 int lastRSSI = 0;
+bool receiverVerified = false;
+
+#define MAX_CACHE 10
+String pendingPayloads[MAX_CACHE];
+int pendingCount = 0;
 
 // --- Setup Wi-Fi ---
 void setupWifi() {
@@ -47,7 +52,7 @@ void setupWifi() {
 
 // --- Register Receiver to Backend (1st boot detection) ---
 void registerReceiverIfNeeded() {
-  String receiverId = "RECEIVER_A8:8F:84";
+  String receiverId = "RECEIVER_" + WiFi.macAddress().substring(9);
   HTTPClient http;
   http.begin(RECEIVER_BOOT_ENDPOINT);
   http.addHeader("Content-Type", "application/json");
@@ -59,8 +64,10 @@ void registerReceiverIfNeeded() {
 
   int code = http.POST(body);
   if (code > 0) {
+    String res = http.getString();
     Serial.println("Receiver boot POST OK: " + String(code));
-    Serial.println("Response: " + http.getString());
+    Serial.println("Response: " + res);
+    receiverVerified = res.indexOf("already verified") >= 0;
   } else {
     Serial.println("Receiver boot POST failed: " + http.errorToString(code));
   }
@@ -88,6 +95,31 @@ void registerSensorIfNeeded(const String& sensorId, const String& receiverId) {
   }
 
   http.end();
+}
+
+// --- Flush Cached Uploads ---
+void flushPendingPayloads() {
+  HTTPClient http;
+  for (int i = 0; i < pendingCount; i++) {
+    http.begin(UPLOAD_ENDPOINT);
+    http.addHeader("Content-Type", "application/json");
+
+    int code = http.POST(pendingPayloads[i]);
+    delay(100);
+
+    if (code > 0 && code < 300) {
+      Serial.println("Cached upload sent OK.");
+      for (int j = i; j < pendingCount - 1; j++) {
+        pendingPayloads[j] = pendingPayloads[j + 1];
+      }
+      pendingCount--;
+      i--;
+    } else {
+      Serial.println("Cached upload failed: " + http.errorToString(code));
+    }
+
+    http.end();
+  }
 }
 
 // --- Setup LoRa ---
@@ -145,13 +177,11 @@ void parseLoRaPayload(String payload) {
   Serial.println("Humidity: " + String(humidity));
   Serial.println("Heat Index: " + String(heatIndex));
 
-  if (WiFi.status() == WL_CONNECTED && heatIndex != 0) {
+  if (WiFi.status() == WL_CONNECTED && heatIndex != 0 && receiverVerified) {
     String receiverId = "RECEIVER_" + WiFi.macAddress().substring(9);
-
-    // First-boot detection for sensor
     registerSensorIfNeeded(sensorId, receiverId);
+    flushPendingPayloads();
 
-    // Upload reading
     HTTPClient http;
     http.begin(UPLOAD_ENDPOINT);
     http.addHeader("Content-Type", "application/json");
@@ -165,19 +195,21 @@ void parseLoRaPayload(String payload) {
     json += "}";
 
     int httpResponseCode = http.POST(json);
+    delay(100);
 
-    delay(100);  // Let TCP stack finalize the response
-
-    if (httpResponseCode > 0) {
-      Serial.print("POST OK: ");
-      Serial.println(httpResponseCode);
+    if (httpResponseCode > 0 && httpResponseCode < 300) {
+      Serial.println("POST OK: " + String(httpResponseCode));
       Serial.println("Response: " + http.getString());
     } else {
-      Serial.print("POST Failed: ");
-      Serial.println(http.errorToString(httpResponseCode).c_str());
+      Serial.println("POST Failed, caching payload...");
+      if (pendingCount < MAX_CACHE) {
+        pendingPayloads[pendingCount++] = json;
+      }
     }
 
     http.end();
+  } else {
+    Serial.println("Upload skipped: Not connected or not verified.");
   }
 }
 
@@ -186,10 +218,21 @@ void setup() {
   Serial.begin(115200);
   Wire.begin(21, 22);
 
-  if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("SSD1306 allocation failed"));
+  bool displayReady = display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
+  Serial.println(displayReady ? "OLED init OK" : "OLED init FAIL");
+
+  if (!displayReady) {
+    delay(5000);
     while (true) {}
   }
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("OLED OK");
+  display.display();
+  delay(1500);
 
   setupWifi();
   registerReceiverIfNeeded();
