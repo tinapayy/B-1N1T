@@ -7,21 +7,18 @@ import {
   subMonths,
   subYears,
   startOfDay,
-  endOfDay,
   startOfMonth,
-  endOfMonth,
   startOfYear,
-  endOfYear,
 } from "date-fns";
 
 const COLLECTION_MAP: Record<"week" | "month" | "year", string> = {
-  week: "analytics_weekly_summary",
+  week: "analytics_daily_summary",
   month: "analytics_monthly_summary",
   year: "analytics_yearly_summary",
 };
 
 const DATE_FIELD_MAP: Record<"week" | "month" | "year", string> = {
-  week: "weekStart",
+  week: "date",
   month: "monthStart",
   year: "yearStart",
 };
@@ -47,32 +44,27 @@ export async function GET(req: Request) {
 
     const now = new Date();
     let startDate: Date;
-    let endDate: Date;
     let limit: number;
 
     switch (timeframe) {
       case "week":
-        startDate = subDays(startOfDay(now), 6); // trailing 6 + today
-        endDate = endOfDay(now);
+        startDate = subDays(startOfDay(now), 6); // Trailing 6 + today = 7
         limit = 7;
         break;
       case "month":
         startDate = subMonths(startOfMonth(now), 11); // trailing 11 + current
-        endDate = endOfMonth(now);
         limit = 12;
         break;
       case "year":
         startDate = startOfYear(subYears(now, 3)); // trailing 3 + current
-        endDate = endOfYear(now);
         limit = 4;
         break;
     }
 
     const snapshot = await adminDb
       .collection(collection)
-      .where("sensorID", "==", sensorId)
+      .where("sensorId", "==", sensorId)
       .where(dateField, ">=", startDate)
-      .where(dateField, "<=", endDate)
       .orderBy(dateField, "asc")
       .limit(limit)
       .get();
