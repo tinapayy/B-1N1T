@@ -1,7 +1,5 @@
 // /api/aggregate/rollup/route.ts
 
-// /api/aggregate/rollup/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
