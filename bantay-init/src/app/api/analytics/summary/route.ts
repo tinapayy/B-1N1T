@@ -7,18 +7,21 @@ import {
   subMonths,
   subYears,
   startOfDay,
+  endOfDay,
   startOfMonth,
+  endOfMonth,
   startOfYear,
+  endOfYear,
 } from "date-fns";
 
 const COLLECTION_MAP: Record<"week" | "month" | "year", string> = {
-  week: "analytics_daily_summary", // now using daily summaries for weekly
+  week: "analytics_weekly_summary",
   month: "analytics_monthly_summary",
   year: "analytics_yearly_summary",
 };
 
 const DATE_FIELD_MAP: Record<"week" | "month" | "year", string> = {
-  week: "date",
+  week: "weekStart",
   month: "monthStart",
   year: "yearStart",
 };
@@ -44,27 +47,32 @@ export async function GET(req: Request) {
 
     const now = new Date();
     let startDate: Date;
+    let endDate: Date;
     let limit: number;
 
     switch (timeframe) {
       case "week":
-        startDate = subDays(startOfDay(now), 6);
+        startDate = subDays(startOfDay(now), 6); // trailing 6 + today
+        endDate = endOfDay(now);
         limit = 7;
         break;
       case "month":
-        startDate = subMonths(startOfMonth(now), 11);
+        startDate = subMonths(startOfMonth(now), 11); // trailing 11 + current
+        endDate = endOfMonth(now);
         limit = 12;
         break;
       case "year":
-        startDate = startOfYear(subYears(now, 3));
+        startDate = startOfYear(subYears(now, 3)); // trailing 3 + current
+        endDate = endOfYear(now);
         limit = 4;
         break;
     }
 
     const snapshot = await adminDb
       .collection(collection)
-      .where("sensorId", "==", sensorId)
+      .where("sensorID", "==", sensorId)
       .where(dateField, ">=", startDate)
+      .where(dateField, "<=", endDate)
       .orderBy(dateField, "asc")
       .limit(limit)
       .get();
@@ -89,9 +97,6 @@ export async function GET(req: Request) {
     return NextResponse.json(results);
   } catch (err: any) {
     console.error("Error in /api/analytics/summary:", err.message, err.stack);
-    return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
