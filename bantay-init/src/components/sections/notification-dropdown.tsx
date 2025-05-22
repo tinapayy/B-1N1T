@@ -1,6 +1,9 @@
+// /src/components/sections/notification-dropdown.tsx
+
 "use client";
 
 import { useState } from "react";
+import useSWR from "swr";
 import { Bell } from "lucide-react";
 import {
   DropdownMenu,
@@ -19,57 +22,52 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-// Sample notification data - replace with actual data later
-const sampleNotifications = [
-  {
-    id: 1,
-    type: "danger",
-    message: "Heat index reached 47°C in Miagao, Iloilo",
-    time: "10 minutes ago",
-  },
-  {
-    id: 2,
-    type: "warning",
-    message: "Extreme caution: Heat index at 38°C in Jaro, Iloilo",
-    time: "1 hour ago",
-  },
-  {
-    id: 3,
-    type: "info",
-    message: "New sensor added to your subscriptions",
-    time: "Yesterday",
-  },
-  {
-    id: 4,
-    type: "danger",
-    message: "Heat index at 45°C in Oton, Iloilo",
-    time: "2 hours ago",
-  },
-  {
-    id: 5,
-    type: "info",
-    message: "System maintenance scheduled for tomorrow",
-    time: "3 hours ago",
-  },
-];
+type NotificationItem = {
+  id: number;
+  type: "danger" | "warning" | "info";
+  message: string;
+  time: string;
+};
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export function NotificationDropdown() {
-  const [notifications, setNotifications] = useState(sampleNotifications);
   const [hasUnread, setHasUnread] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const markAllAsRead = () => {
-    setHasUnread(false);
-  };
+  const { data } = useSWR(
+    "/api/analytics/alerts?range=week&sensorId=SENSOR_001", // TEMP: Replace with dynamic multi-sensor source
+    fetcher,
+    { refreshInterval: 30000 }
+  );
+
+  const alerts = data?.alerts ?? [];
+
+  const notifications: NotificationItem[] = alerts.slice(0, 10).map((alert: any, index: number) => ({
+    id: index,
+    type:
+      alert.alertType === "Extreme Danger"
+        ? "danger"
+        : alert.alertType === "Danger"
+        ? "warning"
+        : "info",
+    message: `Heat index at ${alert.heatIndex}°C – ${alert.alertType}`,
+    time: new Date(alert.timestamp).toLocaleString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      month: "short",
+      day: "numeric",
+    }),
+  }));
+
+  const markAllAsRead = () => setHasUnread(false);
 
   const toggleNotifications = () => {
-    setNotificationsEnabled(!notificationsEnabled);
-    if (!notificationsEnabled) {
-      setHasUnread(true); // Reset unread status when re-enabling
-    } else {
-      setHasUnread(false); // Clear unread status when disabling
-    }
+    const next = !notificationsEnabled;
+    setNotificationsEnabled(next);
+    setHasUnread(next);
   };
 
   const getTypeColor = (type: string) => {
@@ -79,13 +77,11 @@ export function NotificationDropdown() {
       case "warning":
         return "bg-[var(--orange-primary)]";
       case "info":
-        return "bg-blue-500";
       default:
-        return "bg-gray-500";
+        return "bg-blue-500";
     }
   };
 
-  // Limit notifications to 3 for dropdown
   const displayedNotifications = notifications.slice(0, 3);
 
   return (
@@ -121,7 +117,7 @@ export function NotificationDropdown() {
           {notificationsEnabled ? (
             displayedNotifications.length > 0 ? (
               <>
-                {displayedNotifications.map((notification) => (
+                {displayedNotifications.map((notification: NotificationItem) => (
                   <DropdownMenuItem
                     key={notification.id}
                     className="flex items-start p-3 cursor-pointer"
@@ -154,30 +150,24 @@ export function NotificationDropdown() {
                       <DialogTitle>All Notifications</DialogTitle>
                     </DialogHeader>
                     <div className="max-h-[60vh] overflow-y-auto">
-                      {notifications.length > 0 ? (
-                        notifications.map((notification) => (
+                      {notifications.map((notification: NotificationItem) => (
+                        <div
+                          key={notification.id}
+                          className="flex items-start p-3 border-b"
+                        >
                           <div
-                            key={notification.id}
-                            className="flex items-start p-3 border-b"
-                          >
-                            <div
-                              className={`${getTypeColor(
-                                notification.type
-                              )} h-2 w-2 rounded-full mt-1.5 mr-2 flex-shrink-0`}
-                            />
-                            <div className="flex-1">
-                              <p className="text-sm">{notification.message}</p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {notification.time}
-                              </p>
-                            </div>
+                            className={`${getTypeColor(
+                              notification.type
+                            )} h-2 w-2 rounded-full mt-1.5 mr-2 flex-shrink-0`}
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm">{notification.message}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {notification.time}
+                            </p>
                           </div>
-                        ))
-                      ) : (
-                        <div className="py-4 text-center text-sm text-gray-500">
-                          No notifications
                         </div>
-                      )}
+                      ))}
                     </div>
                   </DialogContent>
                 </Dialog>
