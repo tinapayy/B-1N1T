@@ -2,23 +2,17 @@
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import {
-  subDays,
-  subMonths,
-  subYears,
-  startOfDay,
-  startOfMonth,
-  startOfYear,
-} from "date-fns";
+import { format } from "date-fns";
+import { DateTime } from "luxon";
 
 const COLLECTION_MAP: Record<"week" | "month" | "year", string> = {
-  week: "analytics_weekly_summary",
+  week: "analytics_daily_summary",
   month: "analytics_monthly_summary",
   year: "analytics_yearly_summary",
 };
 
 const DATE_FIELD_MAP: Record<"week" | "month" | "year", string> = {
-  week: "weekStart",
+  week: "date",
   month: "monthStart",
   year: "yearStart",
 };
@@ -35,37 +29,47 @@ export async function GET(req: Request) {
         ? "year"
         : "week";
 
-    if (!sensorId || typeof sensorId !== "string") {
+    if (!sensorId) {
       return NextResponse.json({ error: "Missing sensorId" }, { status: 400 });
     }
 
     const collection = COLLECTION_MAP[timeframe];
     const dateField = DATE_FIELD_MAP[timeframe];
 
-    const now = new Date();
-    let startDate: Date;
+    // === PH-local date range calculation ===
+    const nowPH = DateTime.local().setZone("Asia/Manila").startOf("day");
+    let startDate: DateTime;
+    let endDate: DateTime;
     let limit: number;
 
     switch (timeframe) {
       case "week":
-        startDate = subDays(startOfDay(now), 6);
+        startDate = nowPH.minus({ days: 6 });
+        endDate = nowPH;
         limit = 7;
         break;
       case "month":
-        startDate = subMonths(startOfMonth(now), 11);
+        startDate = nowPH.minus({ months: 11 }).startOf("month");
+        endDate = nowPH.endOf("month");
         limit = 12;
         break;
       case "year":
-        startDate = startOfYear(subYears(now, 3));
+        startDate = nowPH.minus({ years: 3 }).startOf("year");
+        endDate = nowPH.endOf("year");
         limit = 4;
         break;
     }
 
+    console.log(
+      `Querying ${collection} for ${sensorId} from ${startDate.toISO()} to ${endDate.toISO()}`
+    );
+
     const snapshot = await adminDb
       .collection(collection)
-      .where("sensorID", "==", sensorId)
-      .where(dateField, ">=", startDate)
-      .orderBy(dateField, "asc")
+      .where("sensorId", "==", sensorId)
+      .where(dateField, ">=", startDate.toJSDate())
+      .where(dateField, "<=", endDate.toJSDate())
+      .orderBy(dateField, "desc")
       .limit(limit)
       .get();
 
@@ -73,33 +77,22 @@ export async function GET(req: Request) {
       .map((doc) => {
         const data = doc.data();
         const rawTimestamp = data[dateField];
-        const dateObj = rawTimestamp?.toDate?.() ?? null;
+        if (!rawTimestamp?.toDate) return null;
 
-        if (!dateObj) {
-          console.warn(`[SKIP] Invalid timestamp in ${doc.id}`);
-          return null;
-        }
-
-        const localDate = new Date(dateObj.getTime() + 8 * 60 * 60 * 1000); // UTC+8
-
+        const phDate = DateTime.fromJSDate(rawTimestamp.toDate()).setZone("Asia/Manila").startOf("day");
         return {
-          timestamp: localDate.toISOString().slice(0, 10),
+          timestamp: phDate.toFormat("yyyy-MM-dd"),
           avgTemp: data.avgTemp ?? null,
+          avgHumidity: data.avgHumidity ?? null,
           avgHeatIndex: data.avgHeatIndex ?? null,
-          maxTemp: data.maxTemp ?? null,
-          maxHeatIndex: data.maxHeatIndex ?? null,
-          alertCount: data.alertCount ?? 0,
           isPartial: typeof data.isPartial === "boolean" ? data.isPartial : false,
         };
       })
-      .filter((entry) => entry !== null);
+      .filter((r) => r !== null);
 
     return NextResponse.json(results);
   } catch (err: any) {
     console.error("Error in /api/analytics/summary:", err.message, err.stack);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

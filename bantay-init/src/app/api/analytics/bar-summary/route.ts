@@ -1,7 +1,8 @@
-// /app/api/analytics/bar-summary/route.ts
+// /api/analytics/bar-summary/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
+import { DateTime } from "luxon";
 
 const metricFieldMap: Record<string, { min: string; max: string }> = {
   temperature: { min: "minTemp", max: "maxTemp" },
@@ -11,18 +12,19 @@ const metricFieldMap: Record<string, { min: string; max: string }> = {
 
 const dayLabels = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-function getTrailing7Days(endDate: Date): { dateStr: string; label: string }[] {
-  const result: { dateStr: string; label: string }[] = [];
+function getTrailing7PHDays(): { dateStr: string; label: string; isToday: boolean }[] {
+  const now = DateTime.local().setZone("Asia/Manila").startOf("day");
+  const result: { dateStr: string; label: string; isToday: boolean }[] = [];
+
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(endDate);
-    d.setDate(d.getDate() - i);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const dateStr = `${yyyy}-${mm}-${dd}`;
-    const label = dayLabels[d.getDay()];
-    result.push({ dateStr, label });
+    const d = now.minus({ days: i });
+    result.push({
+      dateStr: d.toFormat("yyyy-MM-dd"),
+      label: dayLabels[d.weekday % 7],
+      isToday: i === 0,
+    });
   }
+
   return result;
 }
 
@@ -33,17 +35,11 @@ export async function GET(req: NextRequest) {
     const metric = searchParams.get("metric")?.toLowerCase();
 
     if (!sensorId || !metric || !(metric in metricFieldMap)) {
-      return NextResponse.json(
-        { error: "Missing or invalid params" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing or invalid parameters" }, { status: 400 });
     }
 
     const { min: minField, max: maxField } = metricFieldMap[metric];
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-    const targetDays = getTrailing7Days(today);
-
+    const targetDays = getTrailing7PHDays();
     const docIds = targetDays.map(({ dateStr }) => `${sensorId}_${dateStr}`);
     const docRefs = docIds.map((id) =>
       adminDb.collection("analytics_min_max_summary").doc(id)
@@ -52,7 +48,7 @@ export async function GET(req: NextRequest) {
     const docs = await adminDb.getAll(...docRefs);
 
     const data = docs.map((snap, index) => {
-      const { label, dateStr } = targetDays[index];
+      const { label, dateStr, isToday } = targetDays[index];
       const d = snap.exists ? snap.data() || {} : {};
       const min = d[minField] ?? null;
       const max = d[maxField] ?? null;
@@ -60,8 +56,11 @@ export async function GET(req: NextRequest) {
       return {
         day: label,
         min,
-        delta: min !== null && max !== null ? max - min : 0,
-        isToday: dateStr === todayStr,
+        delta:
+          typeof min === "number" && typeof max === "number"
+            ? max - min
+            : 0,
+        isToday,
       };
     });
 

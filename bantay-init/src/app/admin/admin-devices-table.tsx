@@ -239,8 +239,10 @@ export function AdminDevicesTable({
                     <TableCell className="font-medium whitespace-nowrap text-sm">
                       {device.name || "—"}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-sm">
-                      {typeof device.location === "string" ? device.location : "—"}
+                    <TableCell className="whitespace-nowrap text-sm max-w-[180px] overflow-hidden text-ellipsis" title={typeof device.location === "string" ? device.location : ""}>
+                      <span className="inline-block truncate max-w-[180px] align-middle">
+                        {typeof device.location === "string" ? device.location : "—"}
+                      </span>
                     </TableCell>
                     {isReceiver(device) ? (
                       <TableCell className="whitespace-nowrap text-sm">

@@ -2,47 +2,69 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
+import { DateTime } from "luxon";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const sensorId = searchParams.get("sensorId");
-
-  if (!sensorId) {
-    return NextResponse.json({ error: "Missing sensorId" }, { status: 400 });
-  }
-
   try {
-    const now = new Date(Date.now() + 8 * 60 * 60 * 1000); // UTC+8
-    const thisMonthId = `${sensorId}_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const { searchParams } = new URL(req.url);
+    const sensorId = searchParams.get("sensorId");
+    const timeframe = searchParams.get("timeframe")?.toLowerCase() || "month";
 
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthId = `${sensorId}_${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}`;
+    if (!sensorId || !["month", "year"].includes(timeframe)) {
+      return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
+    }
 
-    const [thisSnap, lastSnap] = await Promise.all([
-      adminDb.collection("analytics_monthly_summary").doc(thisMonthId).get(),
-      adminDb.collection("analytics_monthly_summary").doc(lastMonthId).get(),
+    const now = DateTime.local().setZone("Asia/Manila");
+    let collection: string;
+    let currId: string;
+    let prevId: string;
+
+    if (timeframe === "month") {
+      collection = "analytics_monthly_summary";
+      currId = `${sensorId}_${now.toFormat("yyyy-MM")}`;
+      prevId = `${sensorId}_${now.minus({ months: 1 }).toFormat("yyyy-MM")}`;
+    } else {
+      collection = "analytics_yearly_summary";
+      currId = `${sensorId}_${now.toFormat("yyyy")}`;
+      prevId = `${sensorId}_${now.minus({ years: 1 }).toFormat("yyyy")}`;
+    }
+
+    const [currSnap, prevSnap] = await Promise.all([
+      adminDb.collection(collection).doc(currId).get(),
+      adminDb.collection(collection).doc(prevId).get(),
     ]);
 
-    const thisData = thisSnap.exists ? thisSnap.data() : null;
-    const lastData = lastSnap.exists ? lastSnap.data() : null;
+    if (!currSnap.exists || !prevSnap.exists) {
+      return NextResponse.json({ error: "Missing summary data" }, { status: 404 });
+    }
 
-    const thisAvg = thisData?.avgHeatIndex ?? null;
-    const lastAvg = lastData?.avgHeatIndex ?? null;
+    const curr = currSnap.data() || {};
+    const prev = prevSnap.data() || {};
 
-    const delta =
-      thisAvg != null && lastAvg != null
-        ? parseFloat((thisAvg - lastAvg).toFixed(1))
+    const delta = (currVal: number, prevVal: number) =>
+      typeof currVal === "number" && typeof prevVal === "number"
+        ? currVal - prevVal
         : null;
 
     return NextResponse.json({
-      changeSinceLastMonth: {
-        delta,
-        thisAvg,
-        lastAvg,
+      current: {
+        avgTemp: curr.avgTemp ?? null,
+        avgHumidity: curr.avgHumidity ?? null,
+        avgHeatIndex: curr.avgHeatIndex ?? null,
+      },
+      previous: {
+        avgTemp: prev.avgTemp ?? null,
+        avgHumidity: prev.avgHumidity ?? null,
+        avgHeatIndex: prev.avgHeatIndex ?? null,
+      },
+      deltas: {
+        avgTemp: delta(curr.avgTemp, prev.avgTemp),
+        avgHumidity: delta(curr.avgHumidity, prev.avgHumidity),
+        avgHeatIndex: delta(curr.avgHeatIndex, prev.avgHeatIndex),
       },
     });
   } catch (err) {
-    console.error("compare error:", err);
+    console.error("[compare]", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
