@@ -5,152 +5,150 @@ import { adminDb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import {
   eachDayOfInterval,
-  startOfDay,
-  subDays,
-  format,
-  endOfDay,
-  startOfMonth,
   endOfMonth,
-  startOfYear,
   endOfYear,
-  eachMonthOfInterval,
-  parseISO,
 } from "date-fns";
+import { DateTime } from "luxon";
+
+function toPHMidnight(date: Date): Date {
+  return DateTime.fromJSDate(date).setZone("Asia/Manila").startOf("day").toJSDate();
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const sensorId = searchParams.get("sensorId");
-  const mockDateParam = searchParams.get("mockDate"); // format: YYYY-MM-DD
+  const mockDateParam = searchParams.get("mockDate");
 
   if (!sensorId) {
     return NextResponse.json({ error: "Missing sensorId" }, { status: 400 });
   }
 
   try {
-    const targetDate = mockDateParam ? parseISO(mockDateParam) : new Date();
-    const start = subDays(startOfDay(targetDate), 6);
-    const end = endOfDay(targetDate);
+    const targetDateRaw = mockDateParam ? new Date(mockDateParam) : new Date();
+    const targetDate = toPHMidnight(targetDateRaw);
+    const start = toPHMidnight(new Date(targetDate.getTime() - 6 * 86400000));
+    const end = targetDate;
+    const days = eachDayOfInterval({ start, end }).map(toPHMidnight);
 
-    const days = eachDayOfInterval({ start, end });
-    const docIds = days.map((d) => `${sensorId}_${format(d, "yyyy-MM-dd")}`);
+    const docIds = days.map((d) => `${sensorId}_${DateTime.fromJSDate(d).toFormat("yyyy-MM-dd")}`);
     const docRefs = docIds.map((id) =>
       adminDb.collection("analytics_min_max_summary").doc(id)
     );
 
     const docs = await adminDb.getAll(...docRefs);
 
-    // === Daily writes ===
-    const dailyWrites = docs.map((snap, i) => {
-      const data = snap.exists ? snap.data() : null;
-      if (!data) {
-        return adminDb.collection("analytics_daily_summary").doc(docIds[i]).set({}, { merge: true });
-      }
+    const dailyWrites = days.map((day, i) => {
+      const docId = `${sensorId}_${DateTime.fromJSDate(day).toFormat("yyyy-MM-dd")}`;
+      const snap = docs[i];
 
-      const count = data.count ?? 0;
+      if (!snap?.exists) return Promise.resolve();
+      const data = snap.data();
+      if (!data || !data.count || data.count === 0) return Promise.resolve();
+
       return adminDb
         .collection("analytics_daily_summary")
-        .doc(docIds[i])
+        .doc(docId)
         .set(
-          count > 0
-            ? {
-                sensorId,
-                date: Timestamp.fromDate(days[i]),
-                avgTemp: data.avgTemp,
-                avgHumidity: data.avgHumidity,
-                avgHeatIndex: data.avgHeatIndex,
-                isPartial: count < 48,
-              }
-            : {},
+          {
+            sensorId,
+            date: Timestamp.fromDate(day),
+            avgTemp: data.avgTemp,
+            avgHumidity: data.avgHumidity,
+            avgHeatIndex: data.avgHeatIndex,
+            isPartial: data.count < 48,
+          },
           { merge: true }
         );
     });
 
-    // === Weekly rollup (7-day trailing) ===
-    const valid = docs.filter((d) => d.exists);
-    const total = valid.length;
-    const dailyPoints = valid.map((d) => d.data()!).filter(Boolean);
+    const valid = docs.filter((d) => d.exists && d.data()?.count > 0);
+    const dailyPoints = valid.map((d) => d.data()!).filter((d) => d && d.count > 0);
+    const avg = (arr: any[], field: string) => {
+      const validPoints = arr.filter((d) => d?.[field] != null && d[field] > 0);
+      return validPoints.length > 0
+        ? validPoints.reduce((sum, d) => sum + (d?.[field] ?? 0), 0) / validPoints.length
+        : 0;
+    };
 
-    const avg = (arr: any[], field: string) =>
-      arr.reduce((sum, d) => sum + (d?.[field] ?? 0), 0) / total;
-
-    const weeklyDocId = `${sensorId}_${format(start, "yyyy-MM-dd")}_to_${format(targetDate, "yyyy-MM-dd")}`;
+    // === WEEKLY
+    const weeklyDocId = `${sensorId}_${DateTime.fromJSDate(start).toFormat("yyyy-MM-dd")}_to_${DateTime.fromJSDate(end).toFormat("yyyy-MM-dd")}`;
     const weeklyWrite = adminDb
       .collection("analytics_weekly_summary")
       .doc(weeklyDocId)
       .set(
-        total > 0
+        dailyPoints.length > 0
           ? {
-              sensorId: sensorId,
-              dateRange: `${format(start, "yyyy-MM-dd")}_to_${format(targetDate, "yyyy-MM-dd")}`,
+              sensorId,
+              dateRange: `${DateTime.fromJSDate(start).toFormat("yyyy-MM-dd")}_to_${DateTime.fromJSDate(end).toFormat("yyyy-MM-dd")}`,
               weekStart: Timestamp.fromDate(start),
               avgTemp: avg(dailyPoints, "avgTemp"),
               avgHumidity: avg(dailyPoints, "avgHumidity"),
               avgHeatIndex: avg(dailyPoints, "avgHeatIndex"),
-              isPartial: total < 7,
+              isPartial: dailyPoints.length < 7,
             }
           : {},
         { merge: true }
       );
 
-    // === Monthly rollup ===
-    const monthStart = startOfMonth(targetDate);
-    const monthEnd = endOfMonth(targetDate);
+    // === MONTHLY
+    const monthStart = DateTime.fromJSDate(end).setZone("Asia/Manila").startOf("month").toJSDate();
+    const monthEnd = toPHMidnight(endOfMonth(end));
     const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-    const monthIds = monthDays.map((d) => `${sensorId}_${format(d, "yyyy-MM-dd")}`);
+    const monthIds = monthDays.map((d) => `${sensorId}_${DateTime.fromJSDate(d).toFormat("yyyy-MM-dd")}`);
     const monthRefs = monthIds.map((id) =>
       adminDb.collection("analytics_min_max_summary").doc(id)
     );
     const monthDocs = await adminDb.getAll(...monthRefs);
-    const monthValid = monthDocs.filter((d) => d.exists);
-    const monthPoints = monthValid.map((d) => d.data());
-    const monthTotal = monthValid.length;
+    const monthPoints = monthDocs.filter((d) => d.exists && d.data()?.count > 0).map((d) => d.data()!);
 
-    const monthlyDocId = `${sensorId}_${format(targetDate, "yyyy-MM")}`;
+    const monthlyDocId = `${sensorId}_${DateTime.fromJSDate(end).toFormat("yyyy-MM")}`;
     const monthlyWrite = adminDb
       .collection("analytics_monthly_summary")
       .doc(monthlyDocId)
       .set(
-        monthTotal > 0
+        monthPoints.length > 0
           ? {
-              sensorId: sensorId,
-              isoMonth: format(targetDate, "yyyy-MM"),
+              sensorId,
+              isoMonth: DateTime.fromJSDate(end).toFormat("yyyy-MM"),
               monthStart: Timestamp.fromDate(monthStart),
               avgTemp: avg(monthPoints, "avgTemp"),
               avgHumidity: avg(monthPoints, "avgHumidity"),
               avgHeatIndex: avg(monthPoints, "avgHeatIndex"),
-              isPartial: monthTotal < monthDays.length,
+              isPartial: monthPoints.length < monthDays.length,
             }
           : {},
         { merge: true }
       );
 
-    // === Yearly rollup ===
-    const yearStart = startOfYear(targetDate);
-    const yearEnd = endOfYear(targetDate);
-    const yearMonths = eachMonthOfInterval({ start: yearStart, end: yearEnd });
-    const yearMonthIds = yearMonths.map((d) => `${sensorId}_${format(d, "yyyy-MM")}`);
+    // === YEARLY
+    const yearStart = DateTime.fromJSDate(end).setZone("Asia/Manila").startOf("year").toJSDate();
+    const yearEnd = toPHMidnight(endOfYear(end));
+    const yearMonths = Array.from({ length: 12 }, (_, i) =>
+      DateTime.fromJSDate(yearStart).plus({ months: i }).toJSDate()
+    );
+    const yearMonthIds = yearMonths.map((d) =>
+      `${sensorId}_${DateTime.fromJSDate(d).toFormat("yyyy-MM")}`
+    );
     const yearMonthRefs = yearMonthIds.map((id) =>
       adminDb.collection("analytics_monthly_summary").doc(id)
     );
     const yearDocs = await adminDb.getAll(...yearMonthRefs);
-    const yearValid = yearDocs.filter((d) => d.exists);
-    const yearPoints = yearValid.map((d) => d.data());
-    const yearTotal = yearValid.length;
+    const yearPoints = yearDocs.filter((d) => d.exists && d.data()?.avgTemp != null).map((d) => d.data()!);
 
-    const yearlyDocId = `${sensorId}_${format(targetDate, "yyyy")}`;
+    const yearlyDocId = `${sensorId}_${DateTime.fromJSDate(end).toFormat("yyyy")}`;
     const yearlyWrite = adminDb
       .collection("analytics_yearly_summary")
       .doc(yearlyDocId)
       .set(
-        yearTotal > 0
+        yearPoints.length > 0
           ? {
-              sensorId: sensorId,
-              isoYear: format(targetDate, "yyyy"),
+              sensorId,
+              isoYear: DateTime.fromJSDate(end).toFormat("yyyy"),
               yearStart: Timestamp.fromDate(yearStart),
               avgTemp: avg(yearPoints, "avgTemp"),
               avgHumidity: avg(yearPoints, "avgHumidity"),
               avgHeatIndex: avg(yearPoints, "avgHeatIndex"),
-              isPartial: yearTotal < yearMonths.length,
+              isPartial: yearPoints.length < 12,
             }
           : {},
         { merge: true }
