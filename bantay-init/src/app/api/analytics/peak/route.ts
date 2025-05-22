@@ -26,8 +26,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       alltimeMax: {
         heatIndex: data?.peakHeatIndex ?? null,
-        timestamp: data?.timestamp?.toDate().toISOString() ?? null
-      }
+        timestamp: data?.timestamp?.toDate().toISOString() ?? null,
+      },
     });
   } catch (err) {
     console.error("Failed to fetch peak index:", err);
