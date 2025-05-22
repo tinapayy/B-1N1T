@@ -2,13 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import {
-  format,
-  subMonths,
-  subYears,
-  startOfMonth,
-  startOfYear
-} from "date-fns";
+import { DateTime } from "luxon";
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,24 +14,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
     }
 
-    const now = new Date();
+    const now = DateTime.local().setZone("Asia/Manila");
     let collection: string;
     let currId: string;
     let prevId: string;
 
     if (timeframe === "month") {
       collection = "analytics_monthly_summary";
-      currId = `${sensorId}_${format(now, "yyyy-MM")}`;
-      prevId = `${sensorId}_${format(subMonths(now, 1), "yyyy-MM")}`;
+      currId = `${sensorId}_${now.toFormat("yyyy-MM")}`;
+      prevId = `${sensorId}_${now.minus({ months: 1 }).toFormat("yyyy-MM")}`;
     } else {
       collection = "analytics_yearly_summary";
-      currId = `${sensorId}_${format(now, "yyyy")}`;
-      prevId = `${sensorId}_${format(subYears(now, 1), "yyyy")}`;
+      currId = `${sensorId}_${now.toFormat("yyyy")}`;
+      prevId = `${sensorId}_${now.minus({ years: 1 }).toFormat("yyyy")}`;
     }
 
     const [currSnap, prevSnap] = await Promise.all([
       adminDb.collection(collection).doc(currId).get(),
-      adminDb.collection(collection).doc(prevId).get()
+      adminDb.collection(collection).doc(prevId).get(),
     ]);
 
     if (!currSnap.exists || !prevSnap.exists) {
@@ -56,18 +50,18 @@ export async function GET(req: NextRequest) {
       current: {
         avgTemp: curr.avgTemp ?? null,
         avgHumidity: curr.avgHumidity ?? null,
-        avgHeatIndex: curr.avgHeatIndex ?? null
+        avgHeatIndex: curr.avgHeatIndex ?? null,
       },
       previous: {
         avgTemp: prev.avgTemp ?? null,
         avgHumidity: prev.avgHumidity ?? null,
-        avgHeatIndex: prev.avgHeatIndex ?? null
+        avgHeatIndex: prev.avgHeatIndex ?? null,
       },
       deltas: {
         avgTemp: delta(curr.avgTemp, prev.avgTemp),
         avgHumidity: delta(curr.avgHumidity, prev.avgHumidity),
-        avgHeatIndex: delta(curr.avgHeatIndex, prev.avgHeatIndex)
-      }
+        avgHeatIndex: delta(curr.avgHeatIndex, prev.avgHeatIndex),
+      },
     });
   } catch (err) {
     console.error("[compare]", err);
