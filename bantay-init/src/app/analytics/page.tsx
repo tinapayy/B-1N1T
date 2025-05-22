@@ -76,6 +76,7 @@ export default function Analytics() {
       revalidateOnFocus: true,
     }
   );
+  const compareDelta = compareData?.deltas?.avgHeatIndex;
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -87,6 +88,7 @@ export default function Analytics() {
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
+  console.log("Compare delta debug:", compareData?.changeSinceLastMonth?.delta);
   return (
     <div className="flex-1 overflow-auto p-4 lg:p-8 pb-8 lg:pb-8">
       {/* Location Search Card */}
@@ -188,11 +190,9 @@ export default function Analytics() {
             <CardContent className="p-3 flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="text-xl font-bold">
-                  {compareData?.changeSinceLastMonth?.delta != null
-                    ? `${
-                        compareData.changeSinceLastMonth.delta > 0 ? "+" : ""
-                      }${compareData.changeSinceLastMonth.delta}°C`
-                    : "—"}
+                {typeof compareDelta === "number" && isFinite(compareDelta)
+                  ? `${compareDelta >= 0 ? "+" : ""}${compareDelta.toFixed(1)}°C`
+                  : "—"}
                 </div>
                 <div className="text-[10px] leading-tight mt-1 px-1">
                   Change
@@ -250,11 +250,9 @@ export default function Analytics() {
               <CardContent className="p-4 flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="text-xl font-bold">
-                    {compareData?.changeSinceLastMonth?.delta != null
-                      ? `${
-                          compareData.changeSinceLastMonth.delta > 0 ? "+" : ""
-                        }${compareData.changeSinceLastMonth.delta}°C`
-                      : "—"}
+                  {typeof compareDelta === "number" && isFinite(compareDelta)
+                    ? `${compareDelta >= 0 ? "+" : ""}${compareDelta.toFixed(1)}°C`
+                    : "—"}
                   </div>
                   <div className="text-xs mt-1 px-1 sm:px-0">
                     Change Since Last Month
