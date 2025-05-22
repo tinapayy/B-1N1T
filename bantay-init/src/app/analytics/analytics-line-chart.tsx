@@ -67,10 +67,7 @@ export default function AnalyticsLineChart({
             typeof entry.avgHeatIndex === "number" &&
             typeof entry.avgTemp === "number"
         )
-        .sort(
-          (a, b) =>
-            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        )
+        .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
         .map((entry: any) => ({
           label: formatLabel(entry.timestamp, timeframe),
           heatIndex: entry.avgHeatIndex,
@@ -130,67 +127,57 @@ export default function AnalyticsLineChart({
           className="h-[250px] flex-grow aspect-auto"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-              data={transformed}
-              margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                stroke="#f0f0f0"
-              />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-                interval={0}
-              />
-              <YAxis
-                domain={getYDomain(transformed)}
-                axisLine={false}
-                tickLine={false}
-              />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Line
-                type="monotone"
-                dataKey="heatIndex"
-                stroke={config.heatIndex.color}
-                strokeWidth={2}
-                dot={(props) =>
-                  props.payload?.isPartial ? (
-                    <circle
-                      {...props}
-                      r={4}
-                      stroke={config.heatIndex.color}
-                      fill="transparent"
-                      strokeDasharray="2 2"
-                    />
-                  ) : (
-                    <circle {...props} r={3} stroke="none" />
-                  )
-                }
-              />
-              <Line
-                type="monotone"
-                dataKey="temperature"
-                stroke={config.temperature.color}
-                strokeWidth={2}
-                dot={(props) =>
-                  props.payload?.isPartial ? (
-                    <circle
-                      {...props}
-                      r={4}
-                      stroke={config.temperature.color}
-                      fill="transparent"
-                      strokeDasharray="2 2"
-                    />
-                  ) : (
-                    <circle {...props} r={3} stroke="none" />
-                  )
-                }
-              />
-            </LineChart>
+          <LineChart
+            data={transformed}
+            margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="#f0f0f0"
+            />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+              interval={0}
+            />
+            <YAxis
+              domain={getYDomain(transformed)}
+              axisLine={false}
+              tickLine={false}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Line
+              type="monotone"
+              dataKey="heatIndex"
+              stroke={config.heatIndex.color}
+              strokeWidth={2}
+              dot={(props) => {
+                const { key, ...rest } = props;
+                return props.payload?.isPartial ? (
+                  <circle key={key} r={4} stroke={config.heatIndex.color} fill="transparent" strokeDasharray="2 2" {...rest} />
+                ) : (
+                  <circle key={key} r={3} stroke="none" {...rest} />
+                );
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="temperature"
+              stroke={config.temperature.color}
+              strokeWidth={2}
+              dot={(props) => {
+                const { key, ...rest } = props;
+                return props.payload?.isPartial ? (
+                  <circle key={key} r={4} stroke={config.temperature.color} fill="transparent" strokeDasharray="2 2" {...rest} />
+                ) : (
+                  <circle key={key} r={3} stroke="none" {...rest} />
+                );
+              }}
+            />
+          </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
 
@@ -224,11 +211,17 @@ export default function AnalyticsLineChart({
 }
 
 function formatLabel(timestamp: string, timeframe: string) {
-  const date = new Date(timestamp);
-  if (timeframe === "Weekly")
-    return date.toLocaleDateString("en-US", { weekday: "short" });
-  if (timeframe === "Monthly")
-    return date.toLocaleDateString("en-US", { month: "short" });
-  if (timeframe === "Yearly") return date.getFullYear().toString();
-  return timestamp;
+  const date = new Date(`${timestamp}T00:00:00Z`); // force parse as UTC
+
+  if (timeframe === "Weekly") {
+    return date.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+  }
+  if (timeframe === "Monthly") {
+    return date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+  }
+  if (timeframe === "Yearly") {
+    return date.getUTCFullYear().toString();
+  }
+
+  return date.toISOString().slice(0, 10);
 }
