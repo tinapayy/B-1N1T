@@ -3,21 +3,20 @@
 import { NextResponse } from "next/server";
 import { adminDb, adminRtdb } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
-
-function getTodayDateStr(date: Date): string {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
+import { DateTime } from "luxon";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { sensorId, temperature, humidity, heatIndex, receiverId, __mockTimestamp } = body;
 
-    if (!sensorId || !receiverId) {
-      return NextResponse.json({ error: "Missing sensorId or receiverId" }, { status: 400 });
+    // Abort entire write if invalid
+    if (
+      !sensorId ||
+      !receiverId ||
+      ![temperature, humidity, heatIndex].every((v) => Number.isFinite(v))
+    ) {
+      return NextResponse.json({ error: "Missing or invalid parameters" }, { status: 400 });
     }
 
     // Verify sensor
@@ -37,10 +36,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Receiver is not verified" }, { status: 403 });
     }
 
-    // Use simulated timestamp (for testing) or current time
     const rawTimestamp = __mockTimestamp || Date.now();
     const timestamp = typeof rawTimestamp === "number" ? rawTimestamp : Date.now();
-    const now = new Date(timestamp);
+
+    // === PH-local datetime parsing ===
+    const dtPH = DateTime.fromMillis(timestamp).setZone("Asia/Manila");
+    const dateKey = dtPH.toFormat("yyyy-MM-dd");
+    const midnightPH = dtPH.startOf("day").toJSDate();
 
     // === RTDB snapshot ===
     const rtdbWrite = adminRtdb.ref(`/sensor_readings/${sensorId}`).set({
@@ -56,37 +58,47 @@ export async function POST(req: Request) {
     const peakSnap = await peakRef.get();
     const prevPeak = peakSnap.exists ? peakSnap.data()?.peakHeatIndex ?? 0 : 0;
 
-    const peakWrite = heatIndex > prevPeak
-      ? peakRef.set({ sensorId, peakHeatIndex: heatIndex, timestamp: Timestamp.fromMillis(timestamp) })
-      : Promise.resolve();
+    const peakWrite =
+      heatIndex > prevPeak
+        ? peakRef.set({
+            sensorId,
+            peakHeatIndex: heatIndex,
+            timestamp: Timestamp.fromMillis(timestamp),
+          })
+        : Promise.resolve();
 
     // === Alerts (if heat index exceeds threshold) ===
-    const alertWrite = heatIndex >= 32
-      ? adminDb.collection("alerts").add({
-          sensorId,
-          temperature,
-          humidity,
-          heatIndex,
-          receiverId,
-          timestamp: Timestamp.fromMillis(timestamp),
-          alertCategory:
-            heatIndex >= 52 ? "Extreme Danger" :
-            heatIndex >= 41 ? "Danger" :
-            "Extreme Caution",
-          message: `High heat index detected: ${heatIndex}`,
-        })
-      : Promise.resolve();
+    const alertWrite =
+      heatIndex >= 32
+        ? adminDb.collection("alerts").add({
+            sensorId,
+            temperature,
+            humidity,
+            heatIndex,
+            receiverId,
+            timestamp: Timestamp.fromMillis(timestamp),
+            alertCategory:
+              heatIndex >= 52
+                ? "Extreme Danger"
+                : heatIndex >= 41
+                ? "Danger"
+                : "Extreme Caution",
+            message: `High heat index detected: ${heatIndex}`,
+          })
+        : Promise.resolve();
 
     // === Daily Min-Max Summary ===
-    const dateKey = getTodayDateStr(now);
-    const minMaxRef = adminDb.collection("analytics_min_max_summary").doc(`${sensorId}_${dateKey}`);
+    const minMaxRef = adminDb
+      .collection("analytics_min_max_summary")
+      .doc(`${sensorId}_${dateKey}`);
     const minMaxSnap = await minMaxRef.get();
     const minMax = minMaxSnap.exists ? minMaxSnap.data() ?? {} : {};
 
     const minMaxWrite = minMaxRef.set(
       {
-        sensorID: sensorId,
+        sensorId,
         timestamp: Timestamp.fromMillis(timestamp),
+        date: Timestamp.fromDate(midnightPH), // aligned with docId
         avgTemp: ((minMax.sumTemp ?? 0) + temperature) / ((minMax.count ?? 0) + 1),
         avgHumidity: ((minMax.sumHumidity ?? 0) + humidity) / ((minMax.count ?? 0) + 1),
         avgHeatIndex: ((minMax.sumHeatIndex ?? 0) + heatIndex) / ((minMax.count ?? 0) + 1),
