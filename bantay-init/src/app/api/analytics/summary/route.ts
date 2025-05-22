@@ -1,15 +1,9 @@
-// /api/analytics/summary/route.ts
+// api/analytics/summary/route.ts
 
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
-import {
-  subDays,
-  subMonths,
-  subYears,
-  startOfDay,
-  startOfMonth,
-  startOfYear,
-} from "date-fns";
+import { format } from "date-fns";
+import { DateTime } from "luxon";
 
 const COLLECTION_MAP: Record<"week" | "month" | "year", string> = {
   week: "analytics_daily_summary",
@@ -42,30 +36,40 @@ export async function GET(req: Request) {
     const collection = COLLECTION_MAP[timeframe];
     const dateField = DATE_FIELD_MAP[timeframe];
 
-    const now = new Date();
-    let startDate: Date;
+    // === PH-local date range calculation ===
+    const nowPH = DateTime.local().setZone("Asia/Manila").startOf("day");
+    let startDate: DateTime;
+    let endDate: DateTime;
     let limit: number;
 
     switch (timeframe) {
       case "week":
-        startDate = subDays(startOfDay(now), 6); // Trailing 6 + today = 7
+        startDate = nowPH.minus({ days: 6 });
+        endDate = nowPH;
         limit = 7;
         break;
       case "month":
-        startDate = subMonths(startOfMonth(now), 11); // trailing 11 + current
+        startDate = nowPH.minus({ months: 11 }).startOf("month");
+        endDate = nowPH.endOf("month");
         limit = 12;
         break;
       case "year":
-        startDate = startOfYear(subYears(now, 3)); // trailing 3 + current
-        limit = 4;
+        startDate = nowPH.startOf("year");
+        endDate = nowPH.endOf("year");
+        limit = 1;
         break;
     }
+
+    console.log(
+      `Querying ${collection} for ${sensorId} from ${startDate.toISO()} to ${endDate.toISO()}`
+    );
 
     const snapshot = await adminDb
       .collection(collection)
       .where("sensorId", "==", sensorId)
-      .where(dateField, ">=", startDate)
-      .orderBy(dateField, "asc")
+      .where(dateField, ">=", startDate.toJSDate())
+      .where(dateField, "<=", endDate.toJSDate())
+      .orderBy(dateField, "desc")
       .limit(limit)
       .get();
 
@@ -73,11 +77,11 @@ export async function GET(req: Request) {
       .map((doc) => {
         const data = doc.data();
         const rawTimestamp = data[dateField];
-        const dateObj = rawTimestamp?.toDate?.() ?? null;
-        if (!dateObj) return null;
+        if (!rawTimestamp?.toDate) return null;
 
+        const phDate = DateTime.fromJSDate(rawTimestamp.toDate()).setZone("Asia/Manila").startOf("day");
         return {
-          timestamp: dateObj.toISOString().slice(0, 10),
+          timestamp: phDate.toFormat("yyyy-MM-dd"),
           avgTemp: data.avgTemp ?? null,
           avgHumidity: data.avgHumidity ?? null,
           avgHeatIndex: data.avgHeatIndex ?? null,
