@@ -1,3 +1,5 @@
+// /dashboard/daily-forecast.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";

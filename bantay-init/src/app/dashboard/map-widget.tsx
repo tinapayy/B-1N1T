@@ -1,13 +1,31 @@
+// src/app/dashboard/map-widget.tsx
 "use client";
 
-import { useState } from "react";
-import useSWR from "swr";
+import { useState, useEffect } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Thermometer, Flame, Server } from "lucide-react";
+import { getFcmToken } from "@/components/fcm-client";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+const fetchSubscribedSensors = async (url: string, token: string | null) => {
+  if (!token) return [];
+  const res = await fetch(`${url}?type=sensorIds`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) {
+    console.error("[fetchSubscribedSensors] Failed to fetch:", res.statusText);
+    return [];
+  }
+  const data = await res.json();
+  console.log("[fetchSubscribedSensors] Response:", JSON.stringify(data, null, 2));
+  return Array.isArray(data.sensorIds) ? data.sensorIds : [];
+};
 
 const ZoomHandler = ({ setZoom }: { setZoom: (zoom: number) => void }) => {
   useMapEvents({
@@ -25,9 +43,56 @@ interface MapWidgetProps {
 const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
   const [zoom, setZoom] = useState(13);
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
-  const [subscribedSensors, setSubscribedSensors] = useState<string[]>([]);
+  const [subscribedSensors, setSubscribedSensors] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("subscribedSensors");
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [showSubscribedList, setShowSubscribedList] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { mutate } = useSWRConfig();
+
+  useEffect(() => {
+    getFcmToken()
+      .then((t) => {
+        setToken(t);
+        setPermissionDenied(false);
+      })
+      .catch(() => {
+        setToken(null);
+        setPermissionDenied(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("subscribedSensors", JSON.stringify(subscribedSensors));
+      console.log("[MapWidget] Saved subscribedSensors to localStorage:", subscribedSensors);
+    }
+  }, [subscribedSensors]);
+
+  const { data: subscribedData, error: fetchError } = useSWR(
+    token ? ["/api/notifications/subscribed-sensors", token] : null,
+    ([url, token]) => fetchSubscribedSensors(url, token),
+    { refreshInterval: 10000 }
+  );
+
+  useEffect(() => {
+    if (fetchError) {
+      console.error("[MapWidget] SWR fetch error:", fetchError);
+      setError("Failed to load subscribed sensors");
+    } else if (Array.isArray(subscribedData)) {
+      setSubscribedSensors(subscribedData);
+      setError(null);
+      console.log("[MapWidget] Updated subscribedSensors from SWR:", subscribedData);
+    }
+  }, [subscribedData, fetchError]);
 
   const { data } = useSWR("/api/dashboard/map-realtime", fetcher);
   const sensorData = data?.sensors ?? [];
@@ -91,18 +156,49 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
     }
   };
 
-  const handleSubscribeToggle = (sensorId: string, location: string) => {
-    setSubscribedSensors((prev) => {
-      if (prev.includes(sensorId)) {
-        setConfirmation(`Unsubscribed from sensor at ${location}`);
-        setTimeout(() => setConfirmation(null), 3000);
-        return prev.filter((id) => id !== sensorId);
-      } else {
-        setConfirmation(`Subscribed to sensor at ${location}!`);
-        setTimeout(() => setConfirmation(null), 3000);
-        return [...prev, sensorId];
-      }
-    });
+  const handleSubscribeToggle = async (sensorId: string, location: string) => {
+    if (permissionDenied) {
+      setConfirmation("Notifications blocked. Enable in browser settings.");
+      setTimeout(() => setConfirmation(null), 3000);
+      return;
+    }
+
+    const isSubscribed = Array.isArray(subscribedSensors) && subscribedSensors.includes(sensorId);
+    console.log(`[handleSubscribeToggle] ${isSubscribed ? "Unsubscribing" : "Subscribing"} sensor ${sensorId}`);
+
+    const previousSensors = subscribedSensors;
+    setSubscribedSensors((prev) =>
+      isSubscribed ? prev.filter((id) => id !== sensorId) : [...prev, sensorId]
+    );
+
+    try {
+      const res = await fetch(
+        `/api/notifications/${isSubscribed ? "unsubscribe" : "subscribe"}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sensorId, token }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Subscription request failed");
+
+      setTimeout(() => {
+        mutate(["/api/notifications/subscribed-sensors", token], undefined, { revalidate: true });
+        console.log("[handleSubscribeToggle] Scheduled SWR mutate for sensor", sensorId);
+      }, 1000);
+
+      setConfirmation(
+        `${isSubscribed ? "Unsubscribed" : "Subscribed"} to sensor at ${location}${!isSubscribed ? "!" : ""}`
+      );
+      setTimeout(() => setConfirmation(null), 3000);
+      console.log(`[handleSubscribeToggle] Success: ${isSubscribed ? "Unsubscribed" : "Subscribed"} sensor ${sensorId}`);
+    } catch (err) {
+      console.error(`[handleSubscribeToggle] Failed to ${isSubscribed ? "unregister" : "register"} token:`, err);
+      setSubscribedSensors(previousSensors);
+      setConfirmation(`${isSubscribed ? "Unsubscription" : "Subscription"} failed.`);
+      setTimeout(() => setConfirmation(null), 3000);
+    }
   };
 
   const truncateLocation = (location: string, maxLength: number = 20) => {
@@ -113,7 +209,7 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
   return (
     <div className="relative h-full w-full">
       <MapContainer
-        center={[10.6442, 122.2352]} // Miagao, Iloilo coordinates
+        center={[10.6442, 122.2352]}
         zoom={zoom}
         className="h-full w-full rounded-xl"
         scrollWheelZoom
@@ -123,7 +219,6 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
         <ZoomHandler setZoom={setZoom} />
         <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
 
-        {/* Sensor Markers */}
         {sensorData.map((sensor: any) => (
           <Marker
             key={sensor.sensorId}
@@ -133,7 +228,6 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
           />
         ))}
 
-        {/* Receiver Markers */}
         {receiverData.map((receiver: any) => (
           <Marker
             key={receiver.receiverId}
@@ -143,7 +237,6 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
         ))}
       </MapContainer>
 
-      {/* Sensor popup */}
       {selectedSensor && (
         <div
           className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white p-3 rounded-lg shadow-lg z-[1000] text-sm"
@@ -154,7 +247,7 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
               (s: any) => s.sensorId === selectedSensor
             );
             if (!sensor) return null;
-            const isSubscribed = subscribedSensors.includes(sensor.sensorId);
+            const isSubscribed = Array.isArray(subscribedSensors) && subscribedSensors.includes(sensor.sensorId);
             return (
               <>
                 <div className="flex flex-col mb-1">
@@ -183,6 +276,7 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
                       handleSubscribeToggle(sensor.sensorId, sensor.location)
                     }
                     className="mr-2 h-4 w-4 text-[var(--orange-primary)] border-gray-300 rounded focus:ring-[var(--orange-primary)]"
+                    disabled={permissionDenied}
                   />
                   <span>Subscribe to this sensor for alerts</span>
                 </label>
@@ -192,14 +286,18 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
         </div>
       )}
 
-      {/* Toast feedback */}
       {confirmation && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-[var(--orange-primary)] text-white p-2 rounded-lg shadow-lg z-[1000] text-sm animate-fade-in-out">
           {confirmation}
         </div>
       )}
 
-      {/* Subscribed list toggle */}
+      {error && (
+        <div className="absolute top-12 left-1/2 transform -translate-x-1/2 bg-red-500 text-white p-2 rounded-lg shadow-lg z-[1000] text-sm animate-fade-in-out">
+          {error}
+        </div>
+      )}
+
       <button
         onClick={() => setShowSubscribedList((prev) => !prev)}
         className="absolute bottom-4 right-4 bg-[var(--orange-primary)] text-white p-2 rounded-full shadow-lg z-[10] hover:bg-[var(--dark-gray-1)] transition-colors"
@@ -207,7 +305,6 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
         <Server className="w-5 h-5" />
       </button>
 
-      {/* Subscribed Sensors */}
       {showSubscribedList && (
         <div className="absolute bottom-16 right-4 bg-white p-4 rounded-lg shadow-lg z-[1000] text-sm w-64 max-h-64 overflow-y-auto">
           <h3 className="font-bold mb-2">Subscribed Sensors</h3>
@@ -235,6 +332,7 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
                         handleSubscribeToggle(sensor.sensorId, sensor.location)
                       }
                       className="ml-2 h-4 w-4 text-[var(--orange-primary)] border-gray-300 rounded focus:ring-[var(--orange-primary)]"
+                      disabled={permissionDenied}
                     />
                   </label>
                 </div>

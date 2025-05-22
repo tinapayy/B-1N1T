@@ -154,28 +154,14 @@ export default function AnalyticsLineChart({
               dataKey="heatIndex"
               stroke={config.heatIndex.color}
               strokeWidth={2}
-              dot={(props) => {
-                const { key, ...rest } = props;
-                return props.payload?.isPartial ? (
-                  <circle key={key} r={4} stroke={config.heatIndex.color} fill="transparent" strokeDasharray="2 2" {...rest} />
-                ) : (
-                  <circle key={key} r={3} stroke="none" {...rest} />
-                );
-              }}
+              dot={false}
             />
             <Line
               type="monotone"
               dataKey="temperature"
               stroke={config.temperature.color}
               strokeWidth={2}
-              dot={(props) => {
-                const { key, ...rest } = props;
-                return props.payload?.isPartial ? (
-                  <circle key={key} r={4} stroke={config.temperature.color} fill="transparent" strokeDasharray="2 2" {...rest} />
-                ) : (
-                  <circle key={key} r={3} stroke="none" {...rest} />
-                );
-              }}
+              dot={false}
             />
           </LineChart>
           </ResponsiveContainer>

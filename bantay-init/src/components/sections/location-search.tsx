@@ -153,7 +153,7 @@ export function LocationSearch({
     <div ref={containerRef} className="relative flex items-center w-full">
       {isSearching ? (
         <div className="flex items-center w-full">
-          <MapPin className="absolute left-3 z-10 h-5 w-5 text-[var(--orange-primary)]" />
+          <Search className="absolute left-3 z-10 h-5 w-5 text-[var(--orange-primary)]" />
           <Input
             ref={inputRef}
             type="text"
@@ -192,10 +192,9 @@ export function LocationSearch({
           onClick={handleSearchClick}
         >
           <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-[var(--orange-primary)]" />
+            <Search className="h-5 w-5 text-[var(--orange-primary)]" />
             <span className="font-medium">{searchValue}</span>
           </div>
-          <Search className="h-4 w-4 text-[var(--dark-gray-1)]" />
         </div>
       )}
 
