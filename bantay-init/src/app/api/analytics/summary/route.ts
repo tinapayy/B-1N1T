@@ -54,9 +54,9 @@ export async function GET(req: Request) {
         limit = 12;
         break;
       case "year":
-        startDate = nowPH.startOf("year");
+        startDate = nowPH.minus({ years: 3 }).startOf("year");
         endDate = nowPH.endOf("year");
-        limit = 1;
+        limit = 4;
         break;
     }
 
