@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Thermometer, Flame, Server } from "lucide-react";
+import { getFcmToken } from "@/components/fcm-client";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -91,20 +92,41 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
     }
   };
 
-  const handleSubscribeToggle = (sensorId: string, location: string) => {
-    setSubscribedSensors((prev) => {
-      if (prev.includes(sensorId)) {
-        setConfirmation(`Unsubscribed from sensor at ${location}`);
+  const handleSubscribeToggle = async (sensorId: string, location: string) => {
+    const isSubscribed = subscribedSensors.includes(sensorId);
+  
+    if (!isSubscribed) {
+      const fcmToken = await getFcmToken();
+      if (!fcmToken) {
+        setConfirmation("Permission denied for notifications.");
         setTimeout(() => setConfirmation(null), 3000);
-        return prev.filter((id) => id !== sensorId);
-      } else {
-        setConfirmation(`Subscribed to sensor at ${location}!`);
-        setTimeout(() => setConfirmation(null), 3000);
-        return [...prev, sensorId];
+        return;
       }
-    });
+  
+      try {
+        await fetch("/api/subscriptions/fcm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sensorId, fcmToken }),
+        });
+      } catch (err) {
+        console.error("[Subscription] Failed to register token:", err);
+        setConfirmation("Subscription failed.");
+        setTimeout(() => setConfirmation(null), 3000);
+        return;
+      }
+    }
+  
+    setSubscribedSensors((prev) =>
+      isSubscribed ? prev.filter((id) => id !== sensorId) : [...prev, sensorId]
+    );
+  
+    setConfirmation(
+      `${isSubscribed ? "Unsubscribed" : "Subscribed"} to sensor at ${location}${!isSubscribed ? "!" : ""}`
+    );
+    setTimeout(() => setConfirmation(null), 3000);
   };
-
+  
   const truncateLocation = (location: string, maxLength: number = 20) => {
     if (location.length <= maxLength) return location;
     return `${location.slice(0, maxLength - 3)}...`;
@@ -206,6 +228,7 @@ const MapWidget = ({ onSensorSelect }: MapWidgetProps) => {
       >
         <Server className="w-5 h-5" />
       </button>
+      <button onClick={async () => console.log(await getFcmToken())}>Test</button>
 
       {/* Subscribed Sensors */}
       {showSubscribedList && (
